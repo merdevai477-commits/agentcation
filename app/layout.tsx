@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'Agentication — Get. Integrate. Grow.',
+  description: 'Build specialized AI agents that connect to your tools, understand your context, and automate real work.',
   generator: 'v0.app',
   icons: {
     icon: [
