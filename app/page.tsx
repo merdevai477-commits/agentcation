@@ -1,53 +1,446 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRight, Bot, Check, Code2, Command, Database, Globe2, Menu, MessageSquare, Network, Play, ShieldCheck, Sparkles, Terminal, X, Zap } from 'lucide-react'
+import {
+  Activity,
+  ArrowRight,
+  BookOpen,
+  Bot,
+  Boxes,
+  Brain,
+  Check,
+  Code2,
+  Command,
+  Database,
+  Eye,
+  FileCode2,
+  GitPullRequest,
+  Globe2,
+  Layers,
+  MessageSquare,
+  Network,
+  Play,
+  Rocket,
+  Search,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
+  Terminal,
+  Users,
+  Wrench,
+  Zap,
+} from 'lucide-react'
+import { AgentDemo } from '@/components/agent-demo'
+import { BrandLogo } from '@/components/brand-logo'
+import { HeroMascot } from '@/components/hero-mascot'
+import { SiteNav } from '@/components/site-nav'
+import { Starfield } from '@/components/fx/starfield'
+import { MotionDirector } from '@/components/fx/motion-director'
+import { I18nProvider, useI18n } from '@/components/i18n'
+import { PricingSection } from '@/components/pricing/pricing-section'
 
-const navItems = [
-  { label: 'Platform', href: '#platform' },
-  { label: 'For developers', href: '/developers' },
-  { label: 'For businesses', href: '/businesses' },
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'Docs', href: '/docs' },
-]
+const stepIcons = [Terminal, Globe2, ShieldCheck, Zap]
+const nodeIcons = [Wrench, BookOpen, Brain, ShieldCheck, Rocket]
+const archIcons = [Settings2, Brain, Network, Database, Layers, Zap]
+const flowIcons = [Activity, Search, FileCode2, Wrench, GitPullRequest, Rocket, Check]
+const devItemIcons = [FileCode2, Activity, Search, GitPullRequest, Rocket, ShieldCheck]
+const bizItemIcons = [MessageSquare, BookOpen, Brain, Boxes, Users, ShieldCheck]
 
-const architecture = [
-  ['01', 'Agent configuration', 'Role, goals, boundaries'],
-  ['02', 'Reasoning model', 'The right model for each task'],
-  ['03', 'Tools & integrations', 'Systems your agent can act on'],
-  ['04', 'Knowledge & retrieval', 'Context that keeps answers grounded'],
-  ['05', 'Memory & rules', 'Persistent journeys and guardrails'],
-  ['06', 'Execution engine', 'Actions, approvals, and outcomes'],
-]
-
-const engineeringSteps = [
-  ['DETECT', 'Alert correlated with elevated checkout 5xxs.'],
-  ['INVESTIGATE', 'Logs, traces, and recent deploys reviewed.'],
-  ['ROOT CAUSE', 'Connection pool regression isolated in checkout.'],
-  ['PROPOSE FIX', 'Patch prepared with a scoped test plan.'],
-  ['PULL REQUEST', 'PR #1842 opened for engineer review.'],
-  ['TESTS + DEPLOY', 'Checks passed; staged rollout authorized.'],
-  ['VERIFY', 'Post-deploy health confirms recovery.'],
-]
-
-function Logo() {
-  return <a href="/" className="flex items-center gap-3 font-semibold tracking-tight text-white"><span className="grid size-8 place-items-center rounded-lg bg-violet-500 text-white shadow-[0_0_24px_rgba(139,92,246,.45)]"><Network size={17} /></span><span>Agentication</span></a>
-}
-
-function Button({ children, href = '/get-started', variant = 'primary' }: { children: React.ReactNode; href?: string; variant?: 'primary' | 'secondary' }) {
-  const classes = variant === 'primary'
-    ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-violet-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300'
-    : 'inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[.04] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300'
-  return <a href={href} className={classes}>{children}<ArrowRight size={16} /></a>
+function Button({ children, href = '/sign-up', variant = 'primary' }: { children: React.ReactNode; href?: string; variant?: 'primary' | 'secondary' }) {
+  const classes = variant === 'primary' ? 'fx-btn fx-btn--primary' : 'fx-btn fx-btn--ghost'
+  return (
+    <a href={href} className={classes}>
+      <span className="inline-flex items-center gap-2">{children}</span>
+      <ArrowRight size={16} />
+    </a>
+  )
 }
 
 function ProductPreview({ business = false }: { business?: boolean }) {
-  const items = business ? ['Customer intent detected', 'Business knowledge retrieved', 'Preference saved', 'Next action: send options'] : ['Checkout-service', 'Database connection pool', 'Recent deployment', 'Error budget']
-  return <div className="preview-grid relative overflow-hidden rounded-xl border border-white/10 bg-[#0b1020] p-4 shadow-2xl shadow-black/20"><div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3"><div className="flex items-center gap-2 text-xs text-slate-400"><span className="size-2 rounded-full bg-cyan-300 shadow-[0_0_8px_#22d3ee]" />{business ? 'business-agent / journey' : 'dave-doctor / incident-042'}</div><span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-1 text-[10px] text-emerald-300">SAMPLE DATA</span></div><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-white/8 bg-white/[.025] p-3"><div className="mb-3 flex items-center justify-between text-[11px] text-slate-500"><span>{business ? 'Journey context' : 'Signal review'}</span><span className="text-cyan-300">Illustrative</span></div>{items.map((item, i) => <div key={item} className="mb-2 flex items-center gap-2 rounded-md border border-white/6 bg-black/20 px-3 py-2 text-xs text-slate-300"><span className={`size-1.5 rounded-full ${i === 0 ? 'bg-amber-300' : 'bg-emerald-300'}`} />{item}</div>)}</div><div className="flex flex-col gap-3"><div className="rounded-lg border border-violet-300/15 bg-violet-300/[.06] p-3"><div className="mb-2 flex items-center gap-2 text-xs text-violet-200"><Sparkles size={14} />Agent activity</div><p className="text-xs leading-5 text-slate-300">{business ? 'Saved preference: prefers a concise comparison.' : 'Correlating 504s with the latest deployment.'}</p><div className="mt-3 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full w-2/3 rounded-full bg-violet-400" /></div></div><div className="rounded-lg border border-white/8 bg-black/20 p-3 text-xs text-slate-400"><span className="text-slate-500">Next action</span><p className="mt-2 text-slate-200">{business ? 'Send tailored product options' : 'Prepare a scoped remediation PR'}</p></div></div></div></div>
+  const { t } = useI18n()
+  const items = business ? t.previewBiz : t.previewEng
+  const itemIcons = business
+    ? [MessageSquare, BookOpen, Brain, Sparkles]
+    : [Activity, Database, Rocket, ShieldCheck]
+  return (
+    <div className="preview-grid relative overflow-hidden rounded-xl border border-white/10 bg-black/60 p-4 shadow-2xl shadow-black/40">
+      <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <span className="size-2 shrink-0 rounded-full bg-sky-400" />
+          {business ? 'business-agent / journey' : 'dave-doctor / incident-042'}
+        </div>
+        <span className="rounded-full border border-sky-500/30 px-2 py-1 text-[10px] text-sky-300">{t.sample}</span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-white/8 bg-white/[.025] p-3">
+          <div className="mb-3 flex items-center justify-between text-[11px] text-slate-500">
+            <span className="inline-flex items-center gap-1.5">
+              {business ? <MessageSquare size={12} /> : <Activity size={12} />}
+              {business ? t.journey : t.signal}
+            </span>
+            <span>{t.illustrative}</span>
+          </div>
+          {items.map((item, i) => {
+            const Icon = itemIcons[i] ?? Sparkles
+            return (
+              <div key={item} className="mb-2 flex items-center gap-2 rounded-md border border-white/6 bg-black/30 px-3 py-2 text-xs text-slate-300">
+                <Icon size={13} className={`shrink-0 ${i === 0 ? 'text-sky-300' : 'text-slate-400'}`} />
+                {item}
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="rounded-lg border border-white/10 bg-white/[.03] p-3">
+            <div className="mb-2 flex items-center gap-2 text-xs text-slate-200">
+              <Sparkles size={14} className="text-sky-300" />
+              {t.activity}
+            </div>
+            <p className="text-xs leading-5 text-slate-300">{business ? t.activityBiz : t.activityEng}</p>
+          </div>
+          <div className="rounded-lg border border-white/8 bg-black/30 p-3 text-xs text-slate-400">
+            <span className="inline-flex items-center gap-1.5 text-slate-500">
+              <Rocket size={12} />
+              {t.next}
+            </span>
+            <p className="mt-2 text-slate-200">{business ? t.nextBiz : t.nextEng}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const bizItemsEn = [
+  'Website & messaging channels',
+  'Company knowledge & FAQs',
+  'Customer context memory',
+  'Lead qualification',
+  'Team collaboration',
+  'Human handoff (planned)',
+]
+
+function Home() {
+  const { t, lang } = useI18n()
+  const [mode, setMode] = useState<'OBSERVE' | 'ASSIST' | 'AUTONOMOUS'>('OBSERVE')
+  const [audience, setAudience] = useState<'dev' | 'biz'>('biz')
+  const bizItems = lang === 'ar'
+    ? ['قنوات الموقع والمراسلة', 'معرفة الشركة والأسئلة الشائعة', 'ذاكرة سياق العميل', 'تأهيل العملاء المحتملين', 'تعاون الفريق', 'تسليم للبشر (مخطط)']
+    : bizItemsEn
+
+  const modeIcons = { OBSERVE: Eye, ASSIST: Wrench, AUTONOMOUS: Zap }
+
+  return (
+    <div id="top" className="site-root min-h-screen overflow-x-clip text-slate-100">
+      <Starfield />
+      <MotionDirector />
+      <SiteNav />
+
+      <main>
+        <section className="hero-grid relative mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-5 sm:pt-24 lg:px-8 lg:pb-20 lg:pt-24">
+          <div className="relative z-10">
+            <div className="hero-split grid items-center gap-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-10">
+              <div className="max-w-3xl">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1.5 text-[11px] font-medium tracking-[.18em] text-sky-200">
+                  <Sparkles size={12} className="text-sky-300" />
+                  {t.heroEyebrow}
+                </div>
+                <h1 className="hero-title max-w-4xl text-[2.6rem] font-semibold leading-[1.05] tracking-[-.045em] text-white sm:text-6xl lg:text-7xl">
+                  {t.heroTitleA}
+                  <span>{t.heroEm}</span>
+                  {t.heroTitleB}
+                </h1>
+                <p className="mt-5 max-w-2xl text-base leading-8 text-slate-400 sm:text-lg">{t.heroBody}</p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Button href="#platform">{t.explore}</Button>
+                  <Button href="#agent-demo" variant="secondary">
+                    <Play size={15} />
+                    {t.talkBiz}
+                  </Button>
+                </div>
+              </div>
+              <HeroMascot />
+            </div>
+            <div className="mt-10 lg:mt-12">
+              <AgentDemo />
+            </div>
+          </div>
+
+          <div className="fx-panel relative z-10 mt-14 rounded-2xl border border-white/10 bg-black/55 p-3 shadow-[0_24px_80px_rgba(0,0,0,.5)] backdrop-blur-xl sm:p-5 lg:mt-16">
+            <div className="mb-4 flex items-center justify-between gap-3 px-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-white">
+                <span className="grid size-7 place-items-center rounded-md bg-sky-500/15 text-sky-300">
+                  <Command size={14} />
+                </span>
+                {t.coreTitle}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                <span className="size-1.5 rounded-full bg-sky-400" />
+                {t.coreBadge}
+              </div>
+            </div>
+            <div className="core-map grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="map-node map-node--main border-sky-500/25 bg-sky-500/10 sm:col-span-3 lg:col-span-1 lg:row-span-2">
+                <Bot className="text-sky-300" size={20} />
+                <span>{t.coreMain[0]}</span>
+                <small>{t.coreMain[1]}</small>
+              </div>
+              {t.coreNodes.map(([label, hint], i) => {
+                const Icon = nodeIcons[i]
+                return (
+                  <div key={label} className="map-node">
+                    <Icon className="text-sky-300" size={17} />
+                    <span>{label}</span>
+                    <small>{hint}</small>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section id="platform" className="border-y border-white/8 bg-black/70 py-16 sm:py-24 lg:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-5 lg:px-8">
+            <div className="mb-8 max-w-2xl">
+              <p className="eyebrow inline-flex items-center gap-2">
+                <Layers size={12} className="text-sky-400" />
+                {t.platformEyebrow}
+              </p>
+              <h2>{t.platformTitle}</h2>
+              <p className="mt-5 text-base leading-8 text-slate-400 sm:text-lg">{t.platformBody}</p>
+            </div>
+
+            <div className="audience-switch" role="tablist" aria-label="Platform audience">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={audience === 'dev'}
+                className={audience === 'dev' ? 'is-active' : ''}
+                onClick={() => setAudience('dev')}
+              >
+                <Code2 size={15} />
+                {t.forDev}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={audience === 'biz'}
+                className={audience === 'biz' ? 'is-active' : ''}
+                onClick={() => setAudience('biz')}
+              >
+                <MessageSquare size={15} />
+                {t.forBiz}
+              </button>
+            </div>
+
+            <article
+              id={audience === 'dev' ? 'developers' : 'businesses'}
+              key={audience}
+              className="product-card audience-panel mx-auto max-w-4xl"
+            >
+              <div className="mb-8 flex items-start justify-between gap-3">
+                <div>
+                  <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[.16em] text-sky-300">
+                    {audience === 'dev' ? <Code2 size={15} /> : <MessageSquare size={15} />}
+                    {audience === 'dev' ? t.devKicker : t.bizKicker}
+                  </div>
+                  <h3>{audience === 'dev' ? t.devTitle : t.bizTitle}</h3>
+                  <p className="mt-3 max-w-2xl text-slate-400">{audience === 'dev' ? t.devBody : t.bizBody}</p>
+                </div>
+                <span className="shrink-0 rounded-full border border-sky-500/30 px-2 py-1 text-[10px] text-sky-300">{t.prototype}</span>
+              </div>
+              <ProductPreview business={audience === 'biz'} />
+              <div className="mt-7 grid grid-cols-1 gap-y-3 sm:grid-cols-2 sm:gap-x-4">
+                {(audience === 'dev' ? t.devItems : bizItems).map((item, i) => {
+                  const Icon = (audience === 'dev' ? devItemIcons : bizItemIcons)[i] ?? Check
+                  return (
+                    <div key={item} className="flex gap-2 text-xs text-slate-300">
+                      <Icon size={14} className="mt-0.5 shrink-0 text-sky-400" />
+                      {item}
+                    </div>
+                  )
+                })}
+              </div>
+              <a
+                href={audience === 'dev' ? '#dave-doctor' : '#businesses'}
+                className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 hover:text-sky-200"
+              >
+                {audience === 'dev' ? t.devLink : t.bizLink} <ArrowRight size={15} />
+              </a>
+            </article>
+          </div>
+        </section>
+
+        <section id="how-it-works" className="mx-auto max-w-7xl px-4 py-16 sm:px-5 sm:py-24 lg:px-8 lg:py-28">
+          <div className="mb-12 max-w-2xl">
+            <p className="eyebrow inline-flex items-center gap-2">
+              <Zap size={12} className="text-sky-400" />
+              {t.howEyebrow}
+            </p>
+            <h2>{t.howTitle}</h2>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {t.steps.map(([num, title, desc], i) => {
+              const Icon = stepIcons[i]
+              return (
+                <div key={num} className="step-card">
+                  <span className="text-xs text-slate-400">{num}</span>
+                  <div className="my-8 flex items-center">
+                    <span className="grid size-10 place-items-center rounded-lg border border-sky-500/25 bg-sky-500/10 text-sky-300">
+                      <Icon size={17} />
+                    </span>
+                  </div>
+                  <h4>{title}</h4>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">{desc}</p>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="border-y border-white/8 bg-black/70 py-16 sm:py-24 lg:py-28">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-5 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:px-8">
+            <div>
+              <p className="eyebrow inline-flex items-center gap-2">
+                <Boxes size={12} className="text-sky-400" />
+                {t.archEyebrow}
+              </p>
+              <h2>{t.archTitle}</h2>
+              <p className="mt-5 leading-7 text-slate-400">{t.archBody}</p>
+              <div className="mt-8 flex flex-wrap gap-3 text-xs text-slate-400">
+                {t.chips.map((chip) => (
+                  <span key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 px-3 py-2 text-sky-200">
+                    <ShieldCheck size={12} className="text-sky-400" />
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {t.arch.map(([num, title, desc], i) => {
+                const Icon = archIcons[i] ?? Sparkles
+                return (
+                  <div key={num} className="arch-card rounded-lg border border-white/8 bg-white/[.025] p-4">
+                    <div className="mb-5 flex items-center justify-between text-[10px] text-slate-400">
+                      <span className="inline-flex items-center gap-1.5 text-sky-300">
+                        <Icon size={14} />
+                        {num}
+                      </span>
+                      <span>+</span>
+                    </div>
+                    <h4 className="text-sm text-white">{title}</h4>
+                    <p className="mt-1 text-xs text-slate-500">{desc}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section id="dave-doctor" className="mx-auto max-w-7xl px-4 py-16 sm:px-5 sm:py-24 lg:px-8 lg:py-28">
+          <div className="grid gap-10 lg:grid-cols-[.9fr_1.1fr] lg:items-start">
+            <div>
+              <p className="eyebrow inline-flex items-center gap-2">
+                <Activity size={12} className="text-sky-400" />
+                {t.daveEyebrow}
+              </p>
+              <h2>{t.daveTitle}</h2>
+              <p className="mt-5 leading-7 text-slate-400">{t.daveBody}</p>
+              <div className="mt-8 flex flex-wrap gap-2" role="tablist">
+                {t.modes.map((item) => {
+                  const Icon = modeIcons[item.id as keyof typeof modeIcons] ?? Eye
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={mode === item.id}
+                      onClick={() => setMode(item.id as typeof mode)}
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold transition ${mode === item.id ? 'border-sky-400/50 bg-sky-500/15 text-sky-100' : 'border-white/10 text-slate-500 hover:text-white'}`}
+                    >
+                      <Icon size={13} />
+                      {item.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-4 text-sm leading-6 text-slate-400">{t.modeCopy[mode]}</p>
+            </div>
+            <div className="fx-panel rounded-xl border border-white/10 bg-black/60 p-4 backdrop-blur-xl sm:p-5">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 text-sm font-medium">
+                  <GitPullRequest size={15} className="text-sky-400" />
+                  {t.workflow}
+                </span>
+                <span className="flex items-center gap-2 text-xs text-slate-400">
+                  <span className="size-1.5 rounded-full bg-sky-400" />
+                  {t.protoFlow}
+                </span>
+              </div>
+              {t.flow.map(([step, detail], i) => {
+                const Icon = flowIcons[i] ?? Check
+                return (
+                  <div key={step} className="flex items-start gap-4 border-t border-white/8 py-4">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-300">
+                      <Icon size={12} />
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold tracking-[.12em] text-slate-300">{step}</span>
+                      <p className="mt-1 text-xs text-slate-500">{detail}</p>
+                    </div>
+                    {i === 2 && <span className="ms-auto shrink-0 text-[10px] text-slate-400">{t.isolated}</span>}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+
+        <PricingSection />
+
+        <section className="relative mx-auto max-w-7xl overflow-hidden px-4 py-20 text-center sm:px-5 lg:px-8">
+          <div className="relative">
+            <p className="eyebrow inline-flex items-center justify-center gap-2">
+              <Rocket size={12} className="text-sky-400" />
+              {t.ctaEyebrow}
+            </p>
+            <h2>{t.ctaTitle}</h2>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-8 text-slate-400 sm:text-lg">{t.ctaBody}</p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <Button>{t.getStarted}</Button>
+              <Button href="/docs" variant="secondary">
+                <BookOpen size={15} />
+                {t.docs}
+              </Button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-white/8 bg-black">
+        <div className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-12 sm:px-5 lg:flex-row lg:items-end lg:justify-between lg:px-8">
+          <div>
+            <BrandLogo />
+            <p className="mt-4 text-sm text-slate-500">{t.tagline}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-10 gap-y-3 text-sm text-slate-500 sm:grid-cols-4">
+            {t.foot.map((label, i) => (
+              <a key={label} href={t.footHrefs[i]} className="hover:text-sky-300">
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+        <div className="mx-auto max-w-7xl border-t border-white/8 px-4 py-5 text-xs text-slate-600 sm:px-5 lg:px-8">{t.legal}</div>
+      </footer>
+    </div>
+  )
 }
 
 export default function Page() {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [mode, setMode] = useState('OBSERVE')
-  return <div id="top" className="min-h-screen overflow-hidden bg-[#080b16] text-slate-100"><header className="fixed inset-x-0 top-0 z-50 border-b border-white/8 bg-[#080b16]/85 backdrop-blur-xl"><div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 lg:px-8"><Logo /><nav className="hidden items-center gap-7 text-sm text-slate-400 lg:flex">{navItems.map(item => <a key={item.label} href={item.href} className="transition hover:text-white">{item.label}</a>)}</nav><div className="hidden items-center gap-3 lg:flex"><a href="/sign-in" className="px-3 py-2 text-sm text-slate-400 hover:text-white">Sign in</a><Button>Get started</Button></div><button aria-label="Toggle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} className="rounded-lg border border-white/10 p-2 text-slate-300 lg:hidden">{menuOpen ? <X size={20} /> : <Menu size={20} />}</button></div>{menuOpen && <div className="border-t border-white/8 bg-[#0b1020] px-5 py-5 lg:hidden"><div className="flex flex-col gap-4 text-sm">{navItems.map(item => <a onClick={() => setMenuOpen(false)} key={item.label} href={item.href}>{item.label}</a>)}<a href="/sign-in">Sign in</a><a href="/get-started" className="text-violet-300">Get started <ArrowRight className="inline" size={14} /></a></div></div>}</header><main><section className="hero-grid relative mx-auto max-w-7xl px-5 pb-20 pt-36 lg:px-8 lg:pb-28 lg:pt-48"><div className="absolute left-1/2 top-0 -z-0 size-[520px] -translate-x-1/2 rounded-full bg-violet-500/10 blur-[120px]" /><div className="relative z-10 max-w-3xl"><div className="mb-7 inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-300/[.06] px-3 py-1.5 text-[11px] font-medium tracking-[.18em] text-violet-200"><span className="size-1.5 rounded-full bg-cyan-300" />THE AI AGENT PLATFORM</div><h1 className="max-w-4xl text-5xl font-semibold leading-[1.04] tracking-[-.045em] text-white sm:text-7xl">AI agents that <span className="text-violet-300">understand</span> your world.</h1><p className="mt-7 max-w-2xl text-lg leading-8 text-slate-400">Build specialized AI agents that connect to your tools, understand your context, and automate real work — from monitoring infrastructure to managing customer relationships.</p><div className="mt-9 flex flex-wrap gap-3"><Button href="#platform">Explore the platform</Button><Button href="#how-it-works" variant="secondary"><Play size={15} />See how it works</Button></div></div><div className="relative z-10 mt-20 rounded-2xl border border-white/10 bg-[#0d1223]/80 p-3 shadow-[0_24px_100px_rgba(0,0,0,.35)] lg:mt-28 lg:p-5"><div className="mb-4 flex items-center justify-between px-2"><div className="flex items-center gap-2 text-sm font-medium text-white"><span className="grid size-7 place-items-center rounded-md bg-violet-500/20 text-violet-300"><Command size={14} /></span>Agentication Core</div><div className="flex items-center gap-2 text-[11px] text-slate-500"><span className="size-1.5 rounded-full bg-emerald-300" />sample architecture</div></div><div className="core-map grid gap-2 sm:grid-cols-3 lg:grid-cols-5"><div className="map-node border-violet-300/30 bg-violet-300/[.08] sm:col-span-3 lg:col-span-1 lg:row-span-2"><Bot className="text-violet-300" size={20} /><span>Agent core</span><small>reasoning + orchestration</small></div>{[['Tools', Globe2], ['Knowledge', Database], ['Memory', Sparkles], ['Rules', ShieldCheck], ['Execution', Zap]].map(([label, Icon]) => <div key={label as string} className="map-node"><Icon className="text-cyan-300" size={17} /><span>{label as string}</span><small>connected layer</small></div>)}</div></div></section><section id="platform" className="border-y border-white/8 bg-[#0b1020] py-24 lg:py-32"><div className="mx-auto max-w-7xl px-5 lg:px-8"><div className="mb-14 max-w-2xl"><p className="eyebrow">THE PLATFORM</p><h2>One platform. Specialized agents.</h2><p className="mt-5 text-lg leading-8 text-slate-400">Every team works differently. Agentication gives you the foundation to build agents around your workflows, tools, data, and permissions.</p></div><div className="grid gap-5 lg:grid-cols-2"><article id="developers" className="product-card"><div className="mb-10 flex items-start justify-between"><div><div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[.16em] text-cyan-300"><Code2 size={15} />AI engineering agent</div><h3>Dave Doctor</h3><p className="mt-3 max-w-md text-slate-400">Your AI engineering partner for systems that need thoughtful investigation, not just alerts.</p></div><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-slate-500">PROTOTYPE</span></div><ProductPreview /><div className="mt-7 grid grid-cols-2 gap-x-4 gap-y-3">{['Codebase analysis', 'Logs & metrics', 'Incident investigation', 'PR workflows', 'Deployment monitoring', 'Post-deploy verification'].map(x => <div key={x} className="flex gap-2 text-xs text-slate-300"><Check size={14} className="shrink-0 text-cyan-300" />{x}</div>)}</div><a href="/developers" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-white hover:text-violet-300">Explore Dave Doctor <ArrowRight size={15} /></a></article><article id="businesses" className="product-card"><div className="mb-10 flex items-start justify-between"><div><div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[.16em] text-violet-300"><MessageSquare size={15} />Business agents</div><h3>Built around your business.</h3><p className="mt-3 max-w-md text-slate-400">Connect channels, knowledge, and operational tools into an agent that knows how work gets done.</p></div><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-slate-500">PROTOTYPE</span></div><ProductPreview business /><a href="/businesses" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-white hover:text-violet-300">Explore business agents <ArrowRight size={15} /></a></article></div></div></section><section id="how-it-works" className="mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32"><div className="mb-14 max-w-2xl"><p className="eyebrow">HOW IT WORKS</p><h2>From configuration to execution.</h2></div><div className="grid gap-5 md:grid-cols-4">{[['01', 'DEFINE', 'Describe the role, goals, capabilities, and boundaries.', Terminal], ['02', 'INTEGRATE', 'Connect the tools, APIs, repositories, and data sources.', Globe2], ['03', 'CONFIGURE', 'Set memory, permissions, schedules, and business rules.', ShieldCheck], ['04', 'EXECUTE', 'Track outcomes and provide reports your team can act on.', Zap]].map(([num, title, desc, Icon]) => <div key={num as string} className="step-card"><span className="text-xs text-violet-300">{num as string}</span><div className="my-8 flex items-center"><span className="grid size-10 place-items-center rounded-lg border border-white/10 bg-white/[.04] text-white">{Icon && <Icon size={17} />}</span></div><h4>{title as string}</h4><p className="mt-3 text-sm leading-6 text-slate-400">{desc as string}</p></div>)}</div></section><section className="border-y border-white/8 bg-[#0b1020] py-24 lg:py-32"><div className="mx-auto grid max-w-7xl gap-12 px-5 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:px-8"><div><p className="eyebrow">AGENT ARCHITECTURE</p><h2>One configurable foundation. Unlimited possibilities.</h2><p className="mt-5 leading-7 text-slate-400">Models provide reasoning. Your systems provide data. Your rules control actions.</p><div className="mt-8 flex gap-3 text-xs text-slate-400"><span className="rounded-full border border-white/10 px-3 py-2">approval-aware</span><span className="rounded-full border border-white/10 px-3 py-2">model-agnostic</span></div></div><div className="grid gap-2 sm:grid-cols-2">{architecture.map(([num, title, desc]) => <div key={num} className="rounded-lg border border-white/8 bg-white/[.025] p-4 transition hover:-translate-y-0.5 hover:border-violet-300/30"><div className="mb-5 flex justify-between text-[10px] text-violet-300"><span>{num}</span><span className="text-slate-600">+</span></div><h4 className="text-sm text-white">{title}</h4><p className="mt-1 text-xs text-slate-500">{desc}</p></div>)}</div></div></section><section id="dave-doctor" className="mx-auto max-w-7xl px-5 py-24 lg:px-8 lg:py-32"><div className="grid gap-14 lg:grid-cols-[.9fr_1.1fr] lg:items-start"><div><p className="eyebrow">DAVE DOCTOR</p><h2>Your systems don&apos;t sleep. Your engineering team does.</h2><p className="mt-5 leading-7 text-slate-400">A complete incident workflow from detection to post-deployment verification. Every action is visible, permissioned, and clearly marked as a prototype.</p><div className="mt-8 flex flex-wrap gap-2" role="tablist" aria-label="Agent operating modes">{['OBSERVE', 'ASSIST', 'AUTONOMOUS'].map(x => <button key={x} role="tab" aria-selected={mode === x} onClick={() => setMode(x)} className={`rounded-md border px-3 py-2 text-xs font-semibold transition ${mode === x ? 'border-violet-300/40 bg-violet-300/10 text-violet-200' : 'border-white/10 text-slate-500 hover:text-white'}`}>{x}</button>)}</div><p className="mt-4 text-sm leading-6 text-slate-400">{mode === 'OBSERVE' ? 'Monitor and report issues as they emerge.' : mode === 'ASSIST' ? 'Investigate incidents and prepare proposed fixes.' : 'Execute explicitly authorized actions under configured policies and safeguards.'}</p></div><div className="rounded-xl border border-white/10 bg-[#0d1223] p-5"><div className="mb-5 flex items-center justify-between"><span className="text-sm font-medium">Incident workflow</span><span className="flex items-center gap-2 text-xs text-emerald-300"><span className="size-1.5 rounded-full bg-emerald-300" />prototype flow</span></div>{engineeringSteps.map(([step, detail], i) => <div key={step} className="flex items-start gap-4 border-t border-white/8 py-4"><span className="grid size-7 shrink-0 place-items-center rounded-full border border-violet-300/30 text-[10px] text-violet-300">0{i + 1}</span><div><span className="text-xs font-semibold tracking-[.12em] text-slate-300">{step}</span><p className="mt-1 text-xs text-slate-500">{detail}</p></div>{i === 2 && <span className="ml-auto text-[10px] text-cyan-300">isolated</span>}</div>)}</div></div></section><section id="pricing" className="border-y border-white/8 bg-[#0b1020] py-24 lg:py-32"><div className="mx-auto max-w-7xl px-5 lg:px-8"><div className="max-w-2xl"><p className="eyebrow">PRICING</p><h2>Start with the way you work.</h2><p className="mt-4 text-slate-400">Clear plan shapes, with pricing published as packaging is finalized. No invented limits or promises.</p></div><div className="mt-12 grid gap-3 md:grid-cols-2 lg:grid-cols-4">{[['FREE', 'For individuals exploring agents.', 'Core concepts and sample workflows.'], ['PRO', 'For developers and small teams.', 'Advanced agent building and integrations.'], ['PLUS', 'For businesses and workflows.', 'Operational journeys and team controls.'], ['ENTERPRISE', 'For advanced controls and custom needs.', 'Custom security, support, and deployment conversations.']].map(([name, desc, detail], i) => <div key={name} className={`rounded-xl border p-5 ${i === 2 ? 'border-violet-300/40 bg-violet-300/[.06]' : 'border-white/10 bg-white/[.02]'}`}><div className="flex items-center justify-between"><h4>{name}</h4>{i === 2 && <span className="text-[10px] text-violet-300">POPULAR</span>}</div><p className="mt-4 min-h-10 text-sm leading-6 text-slate-400">{desc}</p><div className="my-7 border-y border-white/8 py-5 text-sm text-slate-300">{detail}</div><a href="/pricing" className="flex items-center justify-between text-sm font-semibold text-white">Compare plan <ArrowRight size={15} /></a></div>)}</div></div></section><section className="relative mx-auto max-w-7xl overflow-hidden px-5 py-28 text-center lg:px-8"><div className="absolute left-1/2 top-1/2 -z-0 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/15 blur-[100px]" /><div className="relative"><p className="eyebrow">THE NEXT WORKFLOW</p><h2>Your next agent starts here.</h2><p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-slate-400">Connect your tools. Define your workflows. Build an agent around the way you work.</p><div className="mt-8 flex justify-center gap-3"><Button>Get started</Button><Button href="/docs" variant="secondary">Read the docs</Button></div></div></section></main><footer className="border-t border-white/8 bg-[#060812]"><div className="mx-auto flex max-w-7xl flex-col gap-10 px-5 py-12 lg:flex-row lg:items-end lg:justify-between lg:px-8"><div><Logo /><p className="mt-4 text-sm text-slate-500">Get. Integrate. Grow.</p></div><div className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm text-slate-500 sm:grid-cols-4"><a href="#platform" className="hover:text-white">Platform</a><a href="/developers" className="hover:text-white">Developers</a><a href="/businesses" className="hover:text-white">Businesses</a><a href="/pricing" className="hover:text-white">Pricing</a><a href="/docs" className="hover:text-white">Documentation</a><a href="/sign-in" className="hover:text-white">Sign in</a><a href="/privacy" className="hover:text-white">Privacy</a><a href="/terms" className="hover:text-white">Terms</a></div></div><div className="mx-auto max-w-7xl border-t border-white/8 px-5 py-5 text-xs text-slate-600 lg:px-8">© 2026 Agentication. Product concepts shown are illustrative.</div></footer></div>
+  return (
+    <I18nProvider>
+      <Home />
+    </I18nProvider>
+  )
 }
