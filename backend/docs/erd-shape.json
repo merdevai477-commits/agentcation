@@ -1,0 +1,211 @@
+{
+  "source": {
+    "title": "Agentication — Entity Relationship Diagram (ERD)",
+    "eraserFileId": "tKfCWwPUVUb6MYAbhGek",
+    "eraserDiagramId": "8YlaipbiHV6Kecu0yFAw",
+    "url": "https://app.eraser.io/workspace/tKfCWwPUVUb6MYAbhGek?diagram=8YlaipbiHV6Kecu0yFAw&layout=canvas",
+    "capturedAt": "2026-10-22"
+  },
+  "legend": {
+    "blue": "implemented_now",
+    "orange": "proposed_not_implemented",
+    "gray": "note"
+  },
+  "phase": {
+    "current": "users_organization_agent_model",
+    "note": "Implemented: User, Organization, OrganizationMembership, Agent, AgentVersion, Model. Remaining entities are frozen for later phases."
+  },
+  "entities": {
+    "User": {
+      "ar": "المستخدم",
+      "status": "implemented",
+      "auth": "Clerk",
+      "table": "users",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "String", "db": "varchar", "pk": true, "notes": "Clerk user id" },
+        { "ar": "البريد", "name": "email", "type": "String", "db": "varchar" },
+        { "ar": "الاسم", "name": "name", "type": "String", "db": "varchar" },
+        { "ar": "تاريخ_الإنشاء", "name": "createdAt", "type": "DateTime", "db": "timestamptz" }
+      ]
+    },
+    "OrganizationMembership": {
+      "ar": "عضوية_المنظمة",
+      "status": "implemented",
+      "table": "organization_memberships",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_المستخدم", "name": "userId", "type": "String", "fk": "User.id" },
+        { "ar": "معرف_المنظمة", "name": "organizationId", "type": "Uuid", "fk": "Organization.id" },
+        { "ar": "الدور", "name": "role", "type": "String" }
+      ]
+    },
+    "Organization": {
+      "ar": "المنظمة",
+      "status": "implemented",
+      "table": "organizations",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "الاسم", "name": "name", "type": "String" },
+        { "ar": "تاريخ_الإنشاء", "name": "createdAt", "type": "DateTime", "db": "timestamptz" }
+      ]
+    },
+    "Agent": {
+      "ar": "الوكيل",
+      "status": "implemented",
+      "table": "agents",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_المنظمة", "name": "organizationId", "type": "Uuid", "fk": "Organization.id" },
+        { "ar": "الاسم", "name": "name", "type": "String" },
+        { "ar": "الحالة", "name": "status", "type": "String" }
+      ]
+    },
+    "AgentVersion": {
+      "ar": "إصدار_الوكيل",
+      "status": "implemented",
+      "table": "agent_versions",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_الوكيل", "name": "agentId", "type": "Uuid", "fk": "Agent.id" },
+        { "ar": "رقم_الإصدار", "name": "versionNumber", "type": "Int" },
+        { "ar": "معرف_النموذج", "name": "modelId", "type": "Uuid", "fk": "Model.id" }
+      ]
+    },
+    "Model": {
+      "ar": "النموذج",
+      "status": "implemented",
+      "table": "models",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "الاسم", "name": "name", "type": "String" },
+        { "ar": "مفتاح_النموذج", "name": "modelKey", "type": "String" }
+      ]
+    },
+    "AgentDeployment": {
+      "ar": "نشر_الوكيل",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_الإصدار", "name": "versionId", "type": "Uuid", "fk": "AgentVersion.id" },
+        { "ar": "البيئة", "name": "environment", "type": "String" },
+        { "ar": "الحالة", "name": "status", "type": "String" }
+      ]
+    },
+    "AgentRun": {
+      "ar": "تنفيذ_الوكيل",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_الوكيل", "name": "agentId", "type": "Uuid", "fk": "Agent.id" },
+        { "ar": "الحالة", "name": "status", "type": "String" },
+        { "ar": "تاريخ_البدء", "name": "startedAt", "type": "DateTime", "db": "timestamptz" }
+      ]
+    },
+    "KnowledgeBase": {
+      "ar": "قاعدة_المعرفة",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_المنظمة", "name": "organizationId", "type": "Uuid", "fk": "Organization.id" },
+        { "ar": "الاسم", "name": "name", "type": "String" }
+      ]
+    },
+    "Document": {
+      "ar": "المستند",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_قاعدة_المعرفة", "name": "knowledgeBaseId", "type": "Uuid", "fk": "KnowledgeBase.id" },
+        { "ar": "العنوان", "name": "title", "type": "String" },
+        { "ar": "رابط_المصدر", "name": "sourceUrl", "type": "String", "db": "text" }
+      ]
+    },
+    "Conversation": {
+      "ar": "المحادثة",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_المنظمة", "name": "organizationId", "type": "Uuid", "fk": "Organization.id" },
+        { "ar": "معرف_الوكيل", "name": "agentId", "type": "Uuid", "fk": "Agent.id" },
+        { "ar": "الحالة", "name": "status", "type": "String" }
+      ]
+    },
+    "Message": {
+      "ar": "الرسالة",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_المحادثة", "name": "conversationId", "type": "Uuid", "fk": "Conversation.id" },
+        { "ar": "الدور", "name": "role", "type": "String" },
+        { "ar": "المحتوى", "name": "content", "type": "String", "db": "text" }
+      ]
+    },
+    "Integration": {
+      "ar": "التكامل",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "الاسم", "name": "name", "type": "String" },
+        { "ar": "الفئة", "name": "category", "type": "String" }
+      ]
+    },
+    "Tool": {
+      "ar": "الأداة",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_التكامل", "name": "integrationId", "type": "Uuid", "fk": "Integration.id" },
+        { "ar": "الاسم", "name": "name", "type": "String" },
+        { "ar": "الوصف", "name": "description", "type": "String", "db": "text" }
+      ]
+    },
+    "Plan": {
+      "ar": "الخطة",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "الاسم", "name": "name", "type": "String" },
+        { "ar": "السعر_بالدولار", "name": "priceUsd", "type": "Decimal" },
+        { "ar": "فترة_الفوترة", "name": "billingPeriod", "type": "String" }
+      ]
+    },
+    "Subscription": {
+      "ar": "الاشتراك",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_المنظمة", "name": "organizationId", "type": "Uuid", "fk": "Organization.id" },
+        { "ar": "معرف_الخطة", "name": "planId", "type": "Uuid", "fk": "Plan.id" },
+        { "ar": "الحالة", "name": "status", "type": "String" }
+      ]
+    },
+    "ApiKey": {
+      "ar": "مفتاح_API",
+      "status": "proposed",
+      "fields": [
+        { "ar": "المعرف", "name": "id", "type": "Uuid", "pk": true },
+        { "ar": "معرف_المنظمة", "name": "organizationId", "type": "Uuid", "fk": "Organization.id" },
+        { "ar": "الاسم", "name": "name", "type": "String" },
+        { "ar": "بصمة_المفتاح", "name": "keyFingerprint", "type": "String" }
+      ]
+    }
+  },
+  "relations": [
+    { "from": "OrganizationMembership.userId", "to": "User.id", "cardinality": "N:1" },
+    { "from": "OrganizationMembership.organizationId", "to": "Organization.id", "cardinality": "N:1" },
+    { "from": "Agent.organizationId", "to": "Organization.id", "cardinality": "N:1" },
+    { "from": "AgentVersion.agentId", "to": "Agent.id", "cardinality": "N:1" },
+    { "from": "AgentVersion.modelId", "to": "Model.id", "cardinality": "N:1" },
+    { "from": "AgentDeployment.versionId", "to": "AgentVersion.id", "cardinality": "N:1" },
+    { "from": "AgentRun.agentId", "to": "Agent.id", "cardinality": "N:1" },
+    { "from": "KnowledgeBase.organizationId", "to": "Organization.id", "cardinality": "N:1" },
+    { "from": "Document.knowledgeBaseId", "to": "KnowledgeBase.id", "cardinality": "N:1" },
+    { "from": "Conversation.organizationId", "to": "Organization.id", "cardinality": "N:1" },
+    { "from": "Conversation.agentId", "to": "Agent.id", "cardinality": "N:1" },
+    { "from": "Message.conversationId", "to": "Conversation.id", "cardinality": "N:1" },
+    { "from": "Tool.integrationId", "to": "Integration.id", "cardinality": "N:1" },
+    { "from": "Subscription.planId", "to": "Plan.id", "cardinality": "N:1" },
+    { "from": "Subscription.organizationId", "to": "Organization.id", "cardinality": "N:1" },
+    { "from": "ApiKey.organizationId", "to": "Organization.id", "cardinality": "N:1" }
+  ]
+}

@@ -1,0 +1,114 @@
+// Agentication — phase 2: User + Organization + Agent + Model
+// Source ERD: https://app.eraser.io/workspace/tKfCWwPUVUb6MYAbhGek
+// Full frozen shape: backend/docs/erd-shape.json
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// المستخدم [منفّذ — Clerk]
+model User {
+  /// المعرف — Clerk user id (varchar pk)
+  id        String   @id @db.VarChar(255)
+  /// البريد
+  email     String   @db.VarChar(255)
+  /// الاسم
+  name      String   @db.VarChar(255)
+  /// تاريخ_الإنشاء
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  memberships OrganizationMembership[]
+
+  @@map("users")
+}
+
+/// المنظمة
+model Organization {
+  /// المعرف
+  id        String   @id @default(uuid()) @db.Uuid
+  /// الاسم
+  name      String   @db.VarChar(255)
+  /// تاريخ_الإنشاء
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  memberships OrganizationMembership[]
+  agents      Agent[]
+
+  @@map("organizations")
+}
+
+/// عضوية_المنظمة
+model OrganizationMembership {
+  /// المعرف
+  id             String @id @default(uuid()) @db.Uuid
+  /// معرف_المستخدم
+  userId         String @map("user_id") @db.VarChar(255)
+  /// معرف_المنظمة
+  organizationId String @map("organization_id") @db.Uuid
+  /// الدور
+  role           String @db.VarChar(64)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("organization_memberships")
+}
+
+/// الوكيل — تخزين الوكلاء
+model Agent {
+  /// المعرف
+  id             String @id @default(uuid()) @db.Uuid
+  /// معرف_المنظمة
+  organizationId String @map("organization_id") @db.Uuid
+  /// الاسم
+  name           String @db.VarChar(255)
+  /// الحالة
+  status         String @db.VarChar(64)
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions     AgentVersion[]
+
+  @@index([organizationId])
+  @@map("agents")
+}
+
+/// إصدار_الوكيل — يربط الوكيل بالنموذج
+model AgentVersion {
+  /// المعرف
+  id            String @id @default(uuid()) @db.Uuid
+  /// معرف_الوكيل
+  agentId       String @map("agent_id") @db.Uuid
+  /// رقم_الإصدار
+  versionNumber Int    @map("version_number")
+  /// معرف_النموذج
+  modelId       String @map("model_id") @db.Uuid
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  model Model @relation(fields: [modelId], references: [id])
+
+  @@unique([agentId, versionNumber])
+  @@index([modelId])
+  @@map("agent_versions")
+}
+
+/// النموذج / Models
+model Model {
+  /// المعرف
+  id       String @id @default(uuid()) @db.Uuid
+  /// الاسم
+  name     String @db.VarChar(255)
+  /// مفتاح_النموذج
+  modelKey String @map("model_key") @db.VarChar(255)
+
+  versions AgentVersion[]
+
+  @@unique([modelKey])
+  @@map("models")
+}
