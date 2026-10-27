@@ -5752,21 +5752,124 @@ html[data-bzTheme='light'] .bz-card__meta { color: #64748b; }
 .watch__empty { margin: 0; color: #8b9cb3; font-size: 0.82rem; }
 
 @media (max-width: 1023px) {
-  .dv-desktop-only,
-  .bz-desktop-only,
+  .dv-mobile-bar,
+  .bz-mobile-bar { z-index: 50; }
   .dv-sidebar,
-  .bz-sidebar,
-  .dv-tabbar,
-  .bz-tabbar,
+  .bz-sidebar {
+    top: 3.35rem;
+    bottom: 0;
+    height: auto;
+    z-index: 48;
+    width: min(20rem, 88vw);
+    overflow: auto;
+    padding-bottom: 1.25rem;
+  }
   .dv-backdrop,
-  .bz-backdrop,
-  .dv-mobile-bar .dv-mobile-toggle,
-  .bz-mobile-bar .bz-mobile-toggle { display: none !important; }
-  .dv-mobile-only,
-  .bz-mobile-only { display: block; }
-}
-
-@media (min-width: 1024px) {
-  .dv-mobile-only,
-  .bz-mobile-only { display: none !important; }
+  .bz-backdrop { z-index: 47; }
+  .dv-nav-link,
+  .bz-nav-link { min-height: 2.75rem; font-size: 0.92rem; }
+  .dv-filters,
+  .dv-shell .dv-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .dv-shell .dv-hu-select,
+  .dv-shell .dv-hu-search,
+  .dv-filters > * { min-width: 0; width: 100%; }
+  .dv-toolbar .button,
+  .dv-toolbar a.dv-btn,
+  .dv-filters .button { width: 100%; }
+  .dv-ops-kpis { grid-template-columns: 1fr 1fr; }
+  .dv-ops-grid,
+  .dv-ops-grid--bottom,
+  .dv-split,
+  .dv-shell .dv-grid-cards,
+  .dv-grid-2,
+  .dv-grid-3,
+  .dv-meta,
+  .dv-kvs { grid-template-columns: 1fr; }
+  .dv-detail { position: static; }
+  .dv-span-8, .dv-span-4, .dv-span-7, .dv-span-6, .dv-span-5 { grid-column: span 12; }
+  .dv-section-nav, .dv-tabs { display: flex; overflow-x: auto; }
+  .dv-table thead { display: none; }
+  .dv-table tr {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0 0 0.7rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+  }
+  .dv-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 0;
+    padding: 0.28rem 0;
+  }
+  .dv-table td::before {
+    content: attr(data-label);
+    color: #8b9cb3;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .dv-int-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.65rem 0.75rem;
+    margin-bottom: 0.65rem;
+    padding: 0.85rem;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.03);
+  }
+  .dv-int-row > :nth-child(n + 3) { grid-column: 1 / -1; justify-self: stretch; }
+  .dv-modal { width: min(100%, 34rem); max-height: min(88dvh, 40rem); overflow: auto; }
+  .bz-span-8, .bz-span-4 { grid-column: span 12; }
+  .bz-platform-grid { grid-template-columns: 1fr 1fr; }
+  .bz-topbar { flex-direction: column; align-items: stretch; }
+  .bz-topbar__actions,
+  .bz-topbar__actions .bz-btn,
+  .bz-cz-detail__actions,
+  .bz-cz-detail__actions .bz-btn { width: 100%; }
+  .bz-cz-detail__actions { display: grid; gap: 0.5rem; }
+  .bz-search { width: 100%; }
+  .bz-inbox { grid-template-columns: 1fr; }
+  .bz-inbox__list, .bz-inbox__thread { min-height: 18rem; }
+  .bz-table thead { display: none; }
+  .bz-table tr {
+    display: grid;
+    gap: 0.2rem;
+    margin: 0 0 0.7rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+  }
+  .bz-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    border: 0;
+    padding: 0.28rem 0;
+    max-width: none;
+  }
+  .bz-table td::before {
+    content: attr(data-label);
+    color: #8b9cb3;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .bz-table td[data-label='']::before { content: none; }
+  .bz-card .mt-4.flex { display: grid; grid-template-columns: 1fr; }
+  .bz-card .mt-4.flex .bz-btn { width: 100%; }
+  .bz-devi { bottom: calc(4.8rem + env(safe-area-inset-bottom)); }
+  .bz-cz-ws { grid-template-columns: 1fr 1fr; }
+  .bz-cz-split { grid-template-columns: 1fr; }
+  .bz-cz-detail { position: static; }
 }

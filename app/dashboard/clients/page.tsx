@@ -69,22 +69,22 @@ export default function ClientsPage() {
           <tbody>
             {clients.map((c) => (
               <tr key={c.id}>
-                <td>
+                <td data-label="Client">
                   <div className="flex items-center gap-2">
                     <span className="bz-avatar bz-avatar--sm">{c.initials}</span>
                     <span className="text-white">{c.name}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="Platforms">
                   <div className="flex items-center gap-1.5">
                     {c.platforms.map((p) => (
                       <PlatformIcon key={p} id={p} size={14} />
                     ))}
                   </div>
                 </td>
-                <td className="max-w-[220px] truncate text-slate-400">{c.lastPreview}</td>
-                <td className="text-slate-500">{relativeTime(c.lastMessageAt)}</td>
-                <td>
+                <td data-label="Last message" className="text-slate-400">{c.lastPreview}</td>
+                <td data-label="When" className="text-slate-500">{relativeTime(c.lastMessageAt)}</td>
+                <td data-label="">
                   <Link href={`/dashboard/messages?client=${c.id}`} className="bz-link">
                     Open
                   </Link>

@@ -53,19 +53,19 @@ function AutomationsInner() {
           <tbody>
             {autos.map((a) => (
               <tr key={a.id}>
-                <td className="font-medium text-white">{a.name}</td>
-                <td>
+                <td data-label="Automation" className="font-medium text-white">{a.name}</td>
+                <td data-label="Platform">
                   <span className="inline-flex items-center gap-1.5 text-slate-300">
                     <PlatformIcon id={a.platformId} size={14} />
                     {platformLabel(a.platformId)}
                   </span>
                 </td>
-                <td>
+                <td data-label="Status">
                   <StatusDot status={a.status === 'active' ? 'active' : 'paused'} />
                 </td>
-                <td className="text-slate-300">{a.messageCount.toLocaleString()}</td>
-                <td className="text-slate-500">{relativeTime(a.lastActivityAt)}</td>
-                <td>
+                <td data-label="Messages" className="text-slate-300">{a.messageCount.toLocaleString()}</td>
+                <td data-label="Last activity" className="text-slate-500">{relativeTime(a.lastActivityAt)}</td>
+                <td data-label="">
                   {a.status === 'active' ? (
                     <button type="button" className="bz-btn bz-btn--ghost" onClick={() => pause(a.id)}>
                       <Pause size={13} /> Pause

@@ -6,7 +6,6 @@ import { daveCopy } from '@/lib/dave/copy'
 import { useBiznizLang } from '@/components/bizniz/use-bizniz-lang'
 import { DoctorWorkspaceProvider } from '@/components/dave/workspace-context'
 import { DaveSidebar } from './sidebar'
-import { DaveMobileWatch } from '@/components/dave/mobile-watch'
 
 type Props = {
   userName: string
@@ -48,12 +47,7 @@ export function DaveAppShell({ userName, companyName, children }: Props) {
           <DaveSidebar />
           <div className="dv-main">
             <DemoBar />
-            <div className="dv-main__inner">
-              <div className="dv-mobile-only">
-                <DaveMobileWatch />
-              </div>
-              <div className="dv-desktop-only">{children}</div>
-            </div>
+            <div className="dv-main__inner">{children}</div>
           </div>
         </ShellFrame>
       </DoctorWorkspaceProvider>

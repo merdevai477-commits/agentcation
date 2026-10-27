@@ -3,7 +3,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { BiznizLangProvider, useBiznizLang } from '@/components/bizniz/use-bizniz-lang'
 import { BiznizSidebar } from './sidebar'
-import { BiznizMobileWatch } from '@/components/bizniz/mobile-watch'
 
 const THEME_KEY = 'agentication_bizniz_theme'
 
@@ -35,12 +34,7 @@ function BiznizFrame({ userName, companyName, children }: Props) {
             <span className="bz-demo-bar__pulse" />
             DEMO WORKSPACE — connections & counts are illustrative until live connectors ship.
           </div>
-          <div className="bz-main__inner">
-            <div className="bz-mobile-only">
-              <BiznizMobileWatch />
-            </div>
-            <div className="bz-desktop-only">{children}</div>
-          </div>
+          <div className="bz-main__inner">{children}</div>
         </div>
     </div>
   )
