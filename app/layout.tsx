@@ -1,7 +1,7 @@
 import { ClerkProvider } from '@clerk/nextjs'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { IBM_Plex_Sans_Arabic } from 'next/font/google'
+import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from 'next/font/google'
 import { clerkAppearance } from '@/lib/clerk-appearance'
 import './globals.css'
 
@@ -9,6 +9,20 @@ const plexArabic = IBM_Plex_Sans_Arabic({
   subsets: ['arabic'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-arabic',
+  display: 'swap',
+})
+
+const plex = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-plex',
+  display: 'swap',
+})
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-plex-mono',
   display: 'swap',
 })
 
@@ -43,7 +57,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${plexArabic.variable} antialiased`}>
+      <body className={`${plexArabic.variable} ${plex.variable} ${plexMono.variable} antialiased`}>
         <ClerkProvider appearance={clerkAppearance}>
           {children}
           {process.env.NODE_ENV === 'production' && <Analytics />}

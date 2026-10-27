@@ -6,6 +6,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Hide the Next.js route badge in development
+  devIndicators: false,
 }
 
 export default nextConfig

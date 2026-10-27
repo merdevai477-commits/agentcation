@@ -6,20 +6,24 @@ import { DEMO_DURATION_MS } from '@/lib/dave-doctor-demo/scenario'
 type Options = {
   reducedMotion?: boolean
   autoplay?: boolean
+  /** Restart from the beginning when the story finishes. Default true. */
+  loop?: boolean
 }
 
-export function useDaveTimeline({ reducedMotion = false, autoplay = true }: Options = {}) {
+export function useDaveTimeline({ reducedMotion = false, autoplay = true, loop = true }: Options = {}) {
   const [elapsed, setElapsed] = useState(0)
   const [paused, setPaused] = useState(!autoplay)
   const [generation, setGeneration] = useState(0)
 
   const elapsedRef = useRef(0)
   const pausedRef = useRef(paused)
+  const loopRef = useRef(loop)
   const rafRef = useRef(0)
   const lastTsRef = useRef<number | null>(null)
   const mountedRef = useRef(true)
 
   pausedRef.current = paused
+  loopRef.current = loop
 
   const tick = useCallback((ts: number) => {
     if (!mountedRef.current) return
@@ -28,15 +32,23 @@ export function useDaveTimeline({ reducedMotion = false, autoplay = true }: Opti
     lastTsRef.current = ts
 
     if (!pausedRef.current) {
-      const next = Math.min(DEMO_DURATION_MS, elapsedRef.current + dt)
+      let next = elapsedRef.current + dt
+      if (next >= DEMO_DURATION_MS) {
+        if (loopRef.current) {
+          next = 0
+          lastTsRef.current = ts
+        } else {
+          next = DEMO_DURATION_MS
+          elapsedRef.current = next
+          setElapsed(next)
+          pausedRef.current = true
+          setPaused(true)
+          lastTsRef.current = null
+          return
+        }
+      }
       elapsedRef.current = next
       setElapsed(next)
-      if (next >= DEMO_DURATION_MS) {
-        pausedRef.current = true
-        setPaused(true)
-        lastTsRef.current = null
-        return
-      }
     }
 
     rafRef.current = window.requestAnimationFrame(tick)
@@ -83,7 +95,7 @@ export function useDaveTimeline({ reducedMotion = false, autoplay = true }: Opti
   }, [])
 
   const resume = useCallback(() => {
-    if (elapsedRef.current >= DEMO_DURATION_MS) {
+    if (!loopRef.current && elapsedRef.current >= DEMO_DURATION_MS) {
       replay()
       return
     }
@@ -101,7 +113,7 @@ export function useDaveTimeline({ reducedMotion = false, autoplay = true }: Opti
   return {
     elapsed,
     paused,
-    done: elapsed >= DEMO_DURATION_MS,
+    done: !loop && elapsed >= DEMO_DURATION_MS,
     replay,
     pause,
     resume,

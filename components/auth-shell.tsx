@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { AuthClerkCleanup } from '@/components/auth-clerk-cleanup'
 
 type AuthShellProps = {
   children: React.ReactNode
@@ -46,7 +47,10 @@ export function AuthShell({
               </p>
             </div>
 
-            <div className="auth-clerk">{children}</div>
+            <div className="auth-clerk">
+              <AuthClerkCleanup />
+              {children}
+            </div>
           </div>
         </div>
 

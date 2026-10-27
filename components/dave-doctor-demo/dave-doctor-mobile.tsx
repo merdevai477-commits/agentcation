@@ -130,6 +130,7 @@ export function DaveDoctorMobile() {
   const { elapsed, paused, done, replay, togglePause } = useDaveTimeline({
     reducedMotion: reduced,
     autoplay: true,
+    loop: true,
   })
 
   const metrics = useMemo(() => metricsAt(elapsed), [elapsed])

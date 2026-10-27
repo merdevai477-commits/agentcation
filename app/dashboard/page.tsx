@@ -1,5 +1,6 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { HomeDashboard } from '@/components/bizniz/home-dashboard'
+import { DaveHomeDashboard } from '@/components/dave/home-dashboard'
 import { readOnboardingProfile } from '@/lib/onboarding'
 
 export const metadata = {
@@ -15,6 +16,10 @@ export default async function DashboardHomePage() {
     user?.fullName ||
     user?.primaryEmailAddress?.emailAddress?.split('@')[0] ||
     'there'
+
+  if (profile?.productPath === 'dave_doctor') {
+    return <DaveHomeDashboard />
+  }
 
   return <HomeDashboard userName={name} />
 }
