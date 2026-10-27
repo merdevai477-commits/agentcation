@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Alert, Button, Card, Chip, Input, Label, TextField } from '@heroui/react'
+import { PlatformLogo, type PlatformLogoName } from '@/components/brands/platform-logo'
 import { doctorCopy } from '@/lib/dave/doctor-copy'
 import { INTEGRATIONS } from '@/lib/dave/fixtures'
 import { useBiznizLang } from '@/components/bizniz/use-bizniz-lang'
@@ -9,13 +10,13 @@ import { useDoctorWorkspace } from '@/components/dave/workspace-context'
 import { DoctorPage } from '@/components/dave/ui/doctor-page'
 import { Modal, SampleTag } from '@/components/dave/ui/kit'
 
-const MARK: Record<string, string> = {
-  int_github: 'GH',
-  int_railway: 'RW',
-  int_slack: 'SL',
-  int_linear: 'LN',
-  int_sentry: 'SE',
-  int_datadog: 'DD',
+const LOGO: Record<string, PlatformLogoName> = {
+  int_github: 'github',
+  int_railway: 'railway',
+  int_slack: 'slack',
+  int_linear: 'linear',
+  int_sentry: 'sentry',
+  int_datadog: 'datadog',
 }
 
 function isHttpUrl(value: string) {
@@ -144,7 +145,7 @@ export function IntegrationsPage() {
             {INTEGRATIONS.map((item) => (
               <li key={item.id} className="dv-int-row">
                 <span className="dv-int-mark" aria-hidden>
-                  {MARK[item.id]}
+                  <PlatformLogo name={LOGO[item.id]} size={18} title={item.name} />
                 </span>
                 <div className="dv-int-copy">
                   <strong>

@@ -161,18 +161,44 @@ export function DaveSidebar() {
     </>
   )
 
+  const tabs = [
+    { href: '/dashboard', key: 'overview' as const, icon: Home, exact: true },
+    { href: '/dashboard/incidents', key: 'incidents' as const, icon: AlertTriangle },
+    { href: '/dashboard/tasks', key: 'tasks' as const, icon: Stethoscope },
+    { href: '/dashboard/integrations', key: 'integrations' as const, icon: Plug },
+  ]
+
   return (
     <>
-      <button
-        type="button"
-        className="dv-mobile-toggle dv-glass"
-        aria-label={open ? 'Close menu' : 'Open menu'}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {open ? <X size={18} /> : <Menu size={18} />}
-      </button>
+      <header className="dv-mobile-bar">
+        <button
+          type="button"
+          className="dv-mobile-toggle dv-glass"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? <X size={18} /> : <Menu size={18} />}
+        </button>
+        <span className="dv-mobile-bar__title">{t.brandTitle}</span>
+      </header>
       {open ? <button type="button" className="dv-backdrop" aria-label="Close" onClick={() => setOpen(false)} /> : null}
       <aside className={cn('dv-sidebar dv-glass-side', open && 'is-open')}>{Nav}</aside>
+      <nav className="dv-tabbar" aria-label={t.brandTitle}>
+        {tabs.map((item) => {
+          const active = 'exact' in item && item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`)
+          const Icon = item.icon
+          return (
+            <Link key={item.href} href={item.href} className={cn(active && 'is-active')} onClick={() => setOpen(false)}>
+              <Icon size={18} strokeWidth={active ? 2.25 : 1.75} />
+              <span>{copy.nav[item.key]}</span>
+            </Link>
+          )
+        })}
+        <button type="button" onClick={() => setOpen(true)}>
+          <Menu size={18} />
+          <span>{lang === 'ar' ? 'المزيد' : 'More'}</span>
+        </button>
+      </nav>
     </>
   )
 }

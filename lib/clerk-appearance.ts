@@ -53,11 +53,8 @@ export const clerkAppearance = {
     logoBox: 'hidden!',
     logoImage: 'hidden!',
 
-    // Hide Clerk branding + development mode chrome
     footer: 'hidden!',
     clerkFooter: 'hidden!',
-    badge: 'hidden!',
-    internal: 'hidden!',
 
     socialButtons: 'flex flex-col gap-2.5 w-full',
     socialButtonsBlockButton: socialBtn,
