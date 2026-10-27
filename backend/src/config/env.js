@@ -3,9 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-// backend/.env (this file lives in src/config)
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
-// monorepo root .env as fallback
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 
 const required = ['CLERK_PUBLISHABLE_KEY', 'CLERK_SECRET_KEY', 'DATABASE_URL']
@@ -23,4 +21,8 @@ export const env = {
   clerkSecretKey: process.env.CLERK_SECRET_KEY,
   databaseUrl: process.env.DATABASE_URL,
   redisUrl: process.env.REDIS_URL || '',
+  openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
+  openRouterModel: process.env.OPENROUTER_MODEL || 'qwen/qwen3.7-flash',
+  openRouterBaseUrl: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+  whatsappSessionsDir: process.env.WHATSAPP_SESSIONS_DIR || './.wa-sessions',
 }

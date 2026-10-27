@@ -26,6 +26,12 @@ app.get('/', (_req, res) => {
       login: 'POST /api/auth/login',
       me: 'GET /api/auth/me',
       logout: 'POST /api/auth/logout',
+      whatsappSession: 'GET /api/bizniz/whatsapp/session',
+      whatsappStart: 'POST /api/bizniz/whatsapp/start',
+      whatsappStop: 'POST /api/bizniz/whatsapp/stop',
+      whatsappClear: 'POST /api/bizniz/whatsapp/clear',
+      whatsappEvents: 'GET /api/bizniz/whatsapp/events',
+      businessStory: 'GET|PUT /api/bizniz/business-story',
     },
   })
 })

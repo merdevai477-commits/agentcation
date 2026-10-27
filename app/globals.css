@@ -3457,6 +3457,36 @@ html[dir='rtl'] .docs-breadcrumb__sep { transform: scaleX(-1); }
   color: #fda4af;
 }
 
+.bz-input {
+  display: block;
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid var(--bz-border, rgba(148, 163, 184, 0.22));
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.bz-input:focus {
+  border-color: rgba(167, 139, 250, 0.45);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+}
+.bz-input::placeholder { color: #64748b; }
+select.bz-input {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%),
+    linear-gradient(135deg, #94a3b8 50%, transparent 50%);
+  background-position: calc(100% - 14px) calc(50% - 2px), calc(100% - 9px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-inline-end: 1.75rem;
+}
+select.bz-input option { background: #0f172a; color: #e2e8f0; }
+textarea.bz-input { resize: vertical; line-height: 1.45; }
+
 .bz-hint { font-size: 0.72rem; color: #64748b; }
 .bz-card {
   position: relative;

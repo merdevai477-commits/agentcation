@@ -6,9 +6,11 @@ import { PLATFORMS } from '@/lib/bizniz/platforms'
 import { useBiznizApps } from '@/lib/bizniz/store'
 import type { ConnectedApp } from '@/lib/bizniz/types'
 import { AppDetailModal } from '@/components/bizniz/app-detail-modal'
+import { BusinessStoryForm } from '@/components/bizniz/business-story-form'
 import { MotionIn } from '@/components/bizniz/motion-in'
 import { PlatformIcon } from '@/components/bizniz/platform-icon'
 import { StatusDot } from '@/components/bizniz/status-dot'
+import { WhatsAppSessionCard } from '@/components/bizniz/whatsapp-session-card'
 import { BiznizTopbar } from '@/components/bizniz/shell/topbar'
 import { platformLabel } from '@/lib/bizniz/platforms'
 
@@ -24,16 +26,13 @@ export default function AuthenticatePage() {
     await new Promise((r) => setTimeout(r, 700))
     const platform = PLATFORMS.find((p) => p.id === app.platformId)
     if (!platform?.connectorAvailable) {
-      // Honest: no real OAuth in repo — still allow demo connect for UI walkthrough
       connectDemo(
         app.id,
-        app.platformId === 'whatsapp'
-          ? '+20 10 •••• 0000'
-          : app.platformId === 'instagram'
-            ? '@your.brand'
-            : app.platformId === 'telegram'
-              ? '@your_bot'
-              : 'Page · demo',
+        app.platformId === 'instagram'
+          ? '@your.brand'
+          : app.platformId === 'telegram'
+            ? '@your_bot'
+            : 'Page · demo',
       )
       setToast(
         `Demo connection saved for ${platformLabel(app.platformId)}. Real OAuth/session connector is not wired yet.`,
@@ -42,20 +41,22 @@ export default function AuthenticatePage() {
     setBusy(null)
   }
 
+  const otherApps = apps.filter((a) => a.platformId !== 'whatsapp')
+
   return (
     <>
       <MotionIn>
         <BiznizTopbar
           title="Authenticate"
-          subtitle="Connect social channels for your Business Agents."
+          subtitle="Connect WhatsApp for live replies, or demo the other channels."
           showNewAutomation={false}
         />
       </MotionIn>
 
       <MotionIn delay={40}>
-        <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90">
-          No live WhatsApp Web / Meta OAuth connectors are implemented in this repository yet. Connect
-          actions update <strong>demo local state</strong> so you can test the UI.
+        <p className="mb-4 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100/90">
+          واتساب متصل فعليًا عبر جلسة Baileys (QR زي واتساب ويب) والرد التلقائي عبر Qwen 3.7 Flash.
+          باقي المنصات لسه demo محلي للاختبار.
         </p>
       </MotionIn>
 
@@ -65,11 +66,15 @@ export default function AuthenticatePage() {
         </p>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {apps.map((app, i) => {
+      <MotionIn delay={60} className="mb-3">
+        <WhatsAppSessionCard />
+      </MotionIn>
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-2">
+        {otherApps.map((app, i) => {
           const connected = app.status === 'active' || app.status === 'paused' || app.status === 'error'
           return (
-            <MotionIn key={app.id} as="article" className="bz-card bz-glass" delay={60 + i * 50}>
+            <MotionIn key={app.id} as="article" className="bz-card bz-glass" delay={80 + i * 50}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="bz-platform-card__icon">
@@ -90,7 +95,7 @@ export default function AuthenticatePage() {
                     disabled={busy === app.id}
                     onClick={() => void simulateConnect(app)}
                   >
-                    {busy === app.id ? 'Connecting…' : 'Connect'}
+                    {busy === app.id ? 'Connecting…' : 'Connect (demo)'}
                   </button>
                 ) : null}
                 {connected && app.status === 'active' ? (
@@ -132,6 +137,10 @@ export default function AuthenticatePage() {
           )
         })}
       </div>
+
+      <MotionIn delay={120}>
+        <BusinessStoryForm />
+      </MotionIn>
 
       <AppDetailModal
         app={selected}

@@ -5,8 +5,8 @@ export const PLATFORMS: BiznizPlatform[] = [
     id: 'whatsapp',
     name: 'WhatsApp',
     brandColor: '#25D366',
-    /** Session-style connector planned; not wired in this repo yet */
-    connectorAvailable: false,
+    /** Baileys QR session + OpenRouter auto-reply */
+    connectorAvailable: true,
   },
   {
     id: 'instagram',
