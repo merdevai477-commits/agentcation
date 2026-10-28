@@ -22,6 +22,8 @@ function statusLabel(status: string) {
       return 'بانتظار المسح'
     case 'connecting':
       return 'جاري الربط…'
+    case 'reconnecting':
+      return 'إعادة اتصال…'
     case 'logged_out':
       return 'غير مرتبط'
     case 'stopped':
@@ -114,6 +116,7 @@ export function WhatsAppSessionCard({
 
   const status = session?.status || 'stopped'
   const linked = status === 'ready'
+  const hasAccount = Boolean(session?.phoneE164) || status === 'reconnecting' || linked
   const shell = professional || compact
 
   return (
@@ -124,12 +127,17 @@ export function WhatsAppSessionCard({
             <PlatformIcon id="whatsapp" size={26} />
           </span>
           <div>
-            <p className="bz-wa-pro__eyebrow">جلسة واتساب حقيقية</p>
+            <p className="bz-wa-pro__eyebrow">جلسة واتساب حقيقية · إعادة اتصال تلقائي</p>
             <h3 className="bz-wa-pro__title">WhatsApp Business Link</h3>
           </div>
         </div>
-        <span className={cn('bz-wa-pro__badge', linked ? 'is-on' : 'is-off')}>
-          {linked ? <CheckCircle2 size={14} /> : <Link2Off size={14} />}
+        <span
+          className={cn(
+            'bz-wa-pro__badge',
+            linked ? 'is-on' : status === 'reconnecting' || status === 'qr' ? 'is-wait' : 'is-off',
+          )}
+        >
+          {linked ? <CheckCircle2 size={14} /> : status === 'reconnecting' ? <Loader2 size={14} className="animate-spin" /> : <Link2Off size={14} />}
           {statusLabel(status)}
         </span>
       </div>
@@ -141,15 +149,21 @@ export function WhatsAppSessionCard({
         </div>
         <div className="bz-wa-pro__tile">
           <span>رقم واتساب</span>
-          <strong>{linked ? session?.phoneE164 || '—' : 'غير مرتبط'}</strong>
+          <strong>{hasAccount ? session?.phoneE164 || '—' : 'غير مرتبط'}</strong>
         </div>
         <div className="bz-wa-pro__tile">
           <span>اسم العرض</span>
-          <strong>{linked ? session?.displayName || '—' : '—'}</strong>
+          <strong>{hasAccount ? session?.displayName || '—' : '—'}</strong>
         </div>
         <div className="bz-wa-pro__tile">
           <span>الحالة</span>
-          <strong className={linked ? 'text-emerald-300' : 'text-slate-300'}>{statusLabel(status)}</strong>
+          <strong
+            className={
+              linked ? 'text-emerald-300' : status === 'reconnecting' ? 'text-amber-200' : 'text-slate-300'
+            }
+          >
+            {statusLabel(status)}
+          </strong>
         </div>
       </div>
 
@@ -172,15 +186,20 @@ export function WhatsAppSessionCard({
 
       {linked ? (
         <p className="bz-wa-pro__ok">
-          <ShieldCheck size={14} /> الرقم ده مربوط بحسابك — الرسائل الواردة هترد تلقائي حسب قصة البيزنز.
+          <ShieldCheck size={14} /> الرقم مربوط بحسابك. لو الاتصال قطع، النظام يعيد الربط تلقائي من غير QR
+          جديد (طالما ممسحتش الجلسة).
+        </p>
+      ) : status === 'reconnecting' ? (
+        <p className="bz-wa-pro__hint">
+          جاري إعادة الاتصال بالجلسة المحفوظة… لو فشل أكتر من مرة اضغط تشغيل أو امسح وامسح QR من الأول.
         </p>
       ) : (
         <p className="bz-wa-pro__hint">
-          اضغط تشغيل واظهر QR، بعد المسح هيظهر الرقم والاسم هنا كـ «مرتبط».
+          اضغط تشغيل واظهر QR، بعد المسح هيظهر الرقم هنا كـ «مرتبط».
         </p>
       )}
 
-      {error || session?.lastError ? (
+      {error || (session?.lastError && status !== 'ready') ? (
         <p className="rounded-xl border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
           {error || session?.lastError}
         </p>
@@ -190,7 +209,7 @@ export function WhatsAppSessionCard({
         <button
           type="button"
           className="bz-btn bz-btn--primary bz-btn--glow"
-          disabled={!!busy || status === 'ready' || status === 'connecting'}
+          disabled={!!busy || status === 'ready' || status === 'connecting' || status === 'reconnecting'}
           onClick={() => void run('start')}
         >
           {busy === 'start' ? <Loader2 size={14} className="animate-spin" /> : null}

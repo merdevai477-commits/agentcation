@@ -1,7 +1,13 @@
 /** Same-origin Next.js API — no separate backend URL (fixes Failed to fetch on production). */
 const API_BASE = ''
 
-export type WhatsAppSessionStatus = 'stopped' | 'qr' | 'connecting' | 'ready' | 'logged_out'
+export type WhatsAppSessionStatus =
+  | 'stopped'
+  | 'qr'
+  | 'connecting'
+  | 'reconnecting'
+  | 'ready'
+  | 'logged_out'
 
 export type WhatsAppSession = {
   userId?: string
@@ -11,6 +17,8 @@ export type WhatsAppSession = {
   lastError: string | null
   lastQrAt?: string | null
   qrDataUrl?: string | null
+  linked?: boolean
+  live?: boolean
 }
 
 export type BusinessStory = {

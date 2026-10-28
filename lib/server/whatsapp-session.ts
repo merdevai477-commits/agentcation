@@ -19,10 +19,16 @@ type Runtime = {
   starting: boolean
   qrDataUrl: string | null
   events: EventEmitter
+  organizationId: string | null
+  /** When true, unexpected disconnects auto-reconnect using saved auth files */
+  shouldReconnect: boolean
+  reconnectTimer: ReturnType<typeof setTimeout> | null
+  reconnectAttempt: number
 }
 
 /** In-memory runtimes keyed by Clerk userId — one live WhatsApp session per user. */
 const runtimes = new Map<string, Runtime>()
+let restoreStarted = false
 
 function sessionsRoot() {
   return path.resolve(process.env.WHATSAPP_SESSIONS_DIR || './.wa-sessions')
@@ -30,6 +36,10 @@ function sessionsRoot() {
 
 function authPathFor(userId: string) {
   return path.join(sessionsRoot(), userId)
+}
+
+function hasSavedCreds(userId: string) {
+  return fs.existsSync(path.join(authPathFor(userId), 'creds.json'))
 }
 
 function getRuntime(userId: string) {
@@ -40,11 +50,22 @@ function getRuntime(userId: string) {
       starting: false,
       qrDataUrl: null,
       events: new EventEmitter(),
+      organizationId: null,
+      shouldReconnect: false,
+      reconnectTimer: null,
+      reconnectAttempt: 0,
     }
     rt.events.setMaxListeners(50)
     runtimes.set(userId, rt)
   }
   return rt
+}
+
+function clearReconnectTimer(rt: Runtime) {
+  if (rt.reconnectTimer) {
+    clearTimeout(rt.reconnectTimer)
+    rt.reconnectTimer = null
+  }
 }
 
 function emit(userId: string, type: string, payload: Record<string, unknown> = {}) {
@@ -99,21 +120,76 @@ function jidToPhone(jid?: string | null) {
   return digits ? `+${digits}` : null
 }
 
+function disconnectCode(err: unknown): number | undefined {
+  return (err as { output?: { statusCode?: number } } | undefined)?.output?.statusCode
+}
+
+function scheduleReconnect(userId: string, organizationId: string) {
+  const rt = getRuntime(userId)
+  if (!rt.shouldReconnect || rt.starting || rt.sock) return
+  if (!hasSavedCreds(userId)) {
+    rt.shouldReconnect = false
+    void persist(userId, organizationId, {
+      status: 'logged_out',
+      lastError: 'Session files missing — scan QR again',
+    })
+    emit(userId, 'status', { status: 'logged_out' })
+    return
+  }
+
+  clearReconnectTimer(rt)
+  const attempt = rt.reconnectAttempt
+  const delay = Math.min(45_000, 1500 * Math.pow(2, Math.min(attempt, 5)))
+  rt.reconnectAttempt = attempt + 1
+
+  void persist(userId, organizationId, {
+    status: 'reconnecting',
+    lastError: `Reconnecting (attempt ${rt.reconnectAttempt})…`,
+  })
+  emit(userId, 'status', {
+    status: 'reconnecting',
+    attempt: rt.reconnectAttempt,
+    delayMs: delay,
+  })
+
+  rt.reconnectTimer = setTimeout(() => {
+    rt.reconnectTimer = null
+    void startSession(userId, organizationId).catch((err) => {
+      console.error('[whatsapp] reconnect failed', userId, (err as Error).message)
+      scheduleReconnect(userId, organizationId)
+    })
+  }, delay)
+}
+
 export async function getSession(userId: string) {
+  // Kick off restore of previously linked sessions after cold start
+  void ensureSessionsRestored()
+
   const row = await prisma.whatsAppSession.findUnique({ where: { userId } })
   const rt = getRuntime(userId)
+  const live = Boolean(rt.sock)
+  let status = row?.status || 'stopped'
+  if (status === 'ready' && !live && rt.shouldReconnect) status = 'reconnecting'
+  if (status === 'ready' && !live && !rt.shouldReconnect && hasSavedCreds(userId)) {
+    // Creds exist but socket dead — offer auto-resume
+    status = 'reconnecting'
+  }
+
   return {
     userId,
-    status: row?.status || 'stopped',
+    status,
     phoneE164: row?.phoneE164 || null,
     displayName: row?.displayName || null,
     lastError: row?.lastError || null,
     lastQrAt: row?.lastQrAt?.toISOString() || null,
     qrDataUrl: rt.qrDataUrl,
+    linked: Boolean(row?.phoneE164) || hasSavedCreds(userId),
+    live,
   }
 }
 
 export function subscribe(userId: string, listener: (payload: Record<string, unknown>) => void) {
+  void ensureSessionsRestored()
   const rt = getRuntime(userId)
   const handler = (payload: Record<string, unknown>) => listener(payload)
   rt.events.on('event', handler)
@@ -122,12 +198,20 @@ export function subscribe(userId: string, listener: (payload: Record<string, unk
 
 export async function startSession(userId: string, organizationId: string) {
   const rt = getRuntime(userId)
+  rt.organizationId = organizationId
+  rt.shouldReconnect = true
+  clearReconnectTimer(rt)
+
   if (rt.sock || rt.starting) return getSession(userId)
 
   rt.starting = true
   fs.mkdirSync(authPathFor(userId), { recursive: true })
-  await persist(userId, organizationId, { status: 'connecting', lastError: null })
-  emit(userId, 'status', { status: 'connecting' })
+  const resuming = hasSavedCreds(userId)
+  await persist(userId, organizationId, {
+    status: resuming ? 'reconnecting' : 'connecting',
+    lastError: null,
+  })
+  emit(userId, 'status', { status: resuming ? 'reconnecting' : 'connecting' })
 
   try {
     const { state, saveCreds } = await useMultiFileAuthState(authPathFor(userId))
@@ -139,6 +223,10 @@ export async function startSession(userId: string, organizationId: string) {
       printQRInTerminal: false,
       syncFullHistory: false,
       markOnlineOnConnect: false,
+      // Keep connection healthier on cloud hosts
+      keepAliveIntervalMs: 20_000,
+      connectTimeoutMs: 60_000,
+      retryRequestDelayMs: 500,
     })
     rt.sock = sock
 
@@ -155,6 +243,8 @@ export async function startSession(userId: string, organizationId: string) {
 
       if (connection === 'open') {
         rt.qrDataUrl = null
+        rt.reconnectAttempt = 0
+        clearReconnectTimer(rt)
         const phoneE164 = jidToPhone(sock.user?.id)
         const displayName =
           (sock.user as { name?: string; verifiedName?: string } | undefined)?.name ||
@@ -171,28 +261,45 @@ export async function startSession(userId: string, organizationId: string) {
       }
 
       if (connection === 'close') {
-        const code = (lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output
-          ?.statusCode
+        const code = disconnectCode(lastDisconnect?.error)
         const loggedOut = code === DisconnectReason.loggedOut
+        const restarted = code === DisconnectReason.restartRequired
         rt.sock = null
         rt.starting = false
         rt.qrDataUrl = null
+
         if (loggedOut) {
+          rt.shouldReconnect = false
+          clearReconnectTimer(rt)
           await persist(userId, organizationId, {
             status: 'logged_out',
             phoneE164: null,
             displayName: null,
-            lastError: 'Logged out',
+            lastError: 'Logged out from phone — scan QR again',
           })
           emit(userId, 'status', { status: 'logged_out' })
           return
         }
+
+        if (!rt.shouldReconnect) {
+          await persist(userId, organizationId, {
+            status: 'stopped',
+            lastError: (lastDisconnect?.error as Error | undefined)?.message || 'Stopped',
+          })
+          emit(userId, 'status', { status: 'stopped' })
+          return
+        }
+
+        // Network blip / restartRequired / server recycle → keep auth and reconnect
+        const reason =
+          (lastDisconnect?.error as Error | undefined)?.message ||
+          (restarted ? 'Restart required' : 'Connection closed')
         await persist(userId, organizationId, {
-          status: 'stopped',
-          lastError:
-            (lastDisconnect?.error as Error | undefined)?.message || 'Connection closed',
+          status: 'reconnecting',
+          lastError: reason,
         })
-        emit(userId, 'status', { status: 'stopped' })
+        emit(userId, 'status', { status: 'reconnecting', error: reason })
+        scheduleReconnect(userId, organizationId)
       }
     })
 
@@ -248,16 +355,22 @@ export async function startSession(userId: string, organizationId: string) {
     rt.starting = false
     rt.sock = null
     await persist(userId, organizationId, {
-      status: 'stopped',
+      status: rt.shouldReconnect ? 'reconnecting' : 'stopped',
       lastError: (err as Error).message,
     })
-    emit(userId, 'status', { status: 'stopped', error: (err as Error).message })
+    emit(userId, 'status', {
+      status: rt.shouldReconnect ? 'reconnecting' : 'stopped',
+      error: (err as Error).message,
+    })
+    if (rt.shouldReconnect) scheduleReconnect(userId, organizationId)
     throw err
   }
 }
 
 export async function stopSession(userId: string, organizationId: string) {
   const rt = getRuntime(userId)
+  rt.shouldReconnect = false
+  clearReconnectTimer(rt)
   if (rt.sock) {
     try {
       rt.sock.end(undefined)
@@ -275,6 +388,8 @@ export async function stopSession(userId: string, organizationId: string) {
 
 export async function clearSession(userId: string, organizationId: string) {
   const rt = getRuntime(userId)
+  rt.shouldReconnect = false
+  clearReconnectTimer(rt)
   if (rt.sock) {
     try {
       await rt.sock.logout()
@@ -289,6 +404,7 @@ export async function clearSession(userId: string, organizationId: string) {
   }
   rt.starting = false
   rt.qrDataUrl = null
+  rt.reconnectAttempt = 0
 
   const dir = authPathFor(userId)
   if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
@@ -301,4 +417,31 @@ export async function clearSession(userId: string, organizationId: string) {
   })
   emit(userId, 'status', { status: 'logged_out' })
   return getSession(userId)
+}
+
+/** After deploy/restart: resume sessions that still have creds on disk */
+export async function ensureSessionsRestored() {
+  if (restoreStarted) return
+  restoreStarted = true
+  try {
+    if (!process.env.DATABASE_URL?.trim()) return
+    const rows = await prisma.whatsAppSession.findMany({
+      where: {
+        status: { in: ['ready', 'connecting', 'reconnecting', 'qr'] },
+      },
+      take: 50,
+    })
+    for (const row of rows) {
+      if (!hasSavedCreds(row.userId)) continue
+      const rt = getRuntime(row.userId)
+      if (rt.sock || rt.starting) continue
+      rt.shouldReconnect = true
+      rt.organizationId = row.organizationId
+      void startSession(row.userId, row.organizationId).catch((err) => {
+        console.error('[whatsapp] restore failed', row.userId, (err as Error).message)
+      })
+    }
+  } catch (err) {
+    console.error('[whatsapp] ensureSessionsRestored', (err as Error).message)
+  }
 }
