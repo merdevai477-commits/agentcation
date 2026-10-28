@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
+  AUTO_STORAGE_KEY,
   DEMO_AUTOMATIONS,
   DEMO_CONNECTED_APPS,
   STORAGE_KEY,
@@ -25,15 +26,13 @@ function saveApps(apps: ConnectedApp[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(apps))
 }
 
-const AUTO_KEY = 'agentication_bizniz_autos_v1'
-
 function loadAutos(): Automation[] {
   if (typeof window === 'undefined') return DEMO_AUTOMATIONS
   try {
-    const raw = localStorage.getItem(AUTO_KEY)
+    const raw = localStorage.getItem(AUTO_STORAGE_KEY)
     if (!raw) return structuredClone(DEMO_AUTOMATIONS)
     const parsed = JSON.parse(raw) as Automation[]
-    if (!Array.isArray(parsed)) return structuredClone(DEMO_AUTOMATIONS)
+    if (!Array.isArray(parsed) || parsed.length === 0) return structuredClone(DEMO_AUTOMATIONS)
     return parsed
   } catch {
     return structuredClone(DEMO_AUTOMATIONS)
@@ -41,7 +40,7 @@ function loadAutos(): Automation[] {
 }
 
 function saveAutos(autos: Automation[]) {
-  localStorage.setItem(AUTO_KEY, JSON.stringify(autos))
+  localStorage.setItem(AUTO_STORAGE_KEY, JSON.stringify(autos))
 }
 
 export function useBiznizApps() {

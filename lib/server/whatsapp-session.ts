@@ -241,6 +241,16 @@ export async function startSession(userId: string, organizationId: string) {
         emit(userId, 'status', { status: 'qr' })
       }
 
+      // After phone scan (or while socket is negotiating), show real loading — not a frozen QR
+      if (connection === 'connecting' && !qr) {
+        rt.qrDataUrl = null
+        await persist(userId, organizationId, {
+          status: 'connecting',
+          lastError: null,
+        })
+        emit(userId, 'status', { status: 'connecting', qrDataUrl: null })
+      }
+
       if (connection === 'open') {
         rt.qrDataUrl = null
         rt.reconnectAttempt = 0

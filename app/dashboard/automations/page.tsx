@@ -1,10 +1,12 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Pause, Play, Plus } from 'lucide-react'
+import { Loader2, Pause, Play, Plus } from 'lucide-react'
 import { platformLabel } from '@/lib/bizniz/platforms'
-import { relativeTime, useBiznizAutomations } from '@/lib/bizniz/store'
+import { relativeTime } from '@/lib/bizniz/store'
+import { useLiveOverview } from '@/lib/bizniz/use-live-overview'
 import { BiznizTopbar } from '@/components/bizniz/shell/topbar'
 import { MotionIn } from '@/components/bizniz/motion-in'
 import { PlatformIcon } from '@/components/bizniz/platform-icon'
@@ -13,10 +15,39 @@ import { StatusDot } from '@/components/bizniz/status-dot'
 function AutomationsInner() {
   const params = useSearchParams()
   const highlightNew = params.get('new') === '1'
-  const { autos, pause, resume } = useBiznizAutomations()
+  const { data: live, loading } = useLiveOverview()
+  const [paused, setPaused] = useState(false)
   const [notice, setNotice] = useState(
-    highlightNew ? 'New automation wizard is not connected yet — create flow coming with live connectors.' : '',
+    highlightNew ? 'Connect WhatsApp from Authenticate, then manage the live agent here.' : '',
   )
+
+  const row = useMemo(() => {
+    const wa = live?.whatsapp
+    if (!wa) {
+      return {
+        name: 'WhatsApp Support Agent',
+        platformId: 'whatsapp' as const,
+        status: 'paused' as const,
+        messageCount: 0,
+        lastActivityAt: new Date(0).toISOString(),
+        linking: false,
+      }
+    }
+    const linking =
+      wa.session.status === 'connecting' ||
+      wa.session.status === 'reconnecting' ||
+      wa.session.status === 'qr'
+    const active = wa.linked && !paused
+    return {
+      name: 'WhatsApp Support Agent',
+      platformId: 'whatsapp' as const,
+      status: (active ? 'active' : 'paused') as 'active' | 'paused',
+      messageCount: wa.messagesThisMonth,
+      lastActivityAt: wa.lastActivityAt || new Date(0).toISOString(),
+      linking,
+      accountLabel: wa.accountLabel,
+    }
+  }, [live, paused])
 
   return (
     <>
@@ -51,48 +82,75 @@ function AutomationsInner() {
             </tr>
           </thead>
           <tbody>
-            {autos.map((a) => (
-              <tr key={a.id}>
-                <td data-label="Automation" className="font-medium text-white">{a.name}</td>
-                <td data-label="Platform">
-                  <span className="inline-flex items-center gap-1.5 text-slate-300">
-                    <PlatformIcon id={a.platformId} size={14} />
-                    {platformLabel(a.platformId)}
+            <tr>
+              <td data-label="Automation" className="font-medium text-white">
+                {row.name}
+                {row.accountLabel ? (
+                  <span className="mt-0.5 block text-[11px] font-normal text-slate-500">{row.accountLabel}</span>
+                ) : null}
+              </td>
+              <td data-label="Platform">
+                <span className="inline-flex items-center gap-1.5 text-slate-300">
+                  <PlatformIcon id={row.platformId} size={14} />
+                  {platformLabel(row.platformId)}
+                </span>
+              </td>
+              <td data-label="Status">
+                {loading || row.linking ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-amber-200">
+                    <Loader2 size={13} className="animate-spin" />
+                    {row.linking ? 'Linking…' : 'Loading…'}
                   </span>
-                </td>
-                <td data-label="Status">
-                  <StatusDot status={a.status === 'active' ? 'active' : 'paused'} />
-                </td>
-                <td data-label="Messages" className="text-slate-300">{a.messageCount.toLocaleString()}</td>
-                <td data-label="Last activity" className="text-slate-500">{relativeTime(a.lastActivityAt)}</td>
-                <td data-label="">
-                  {a.status === 'active' ? (
-                    <button type="button" className="bz-btn bz-btn--ghost" onClick={() => pause(a.id)}>
-                      <Pause size={13} /> Pause
-                    </button>
-                  ) : (
-                    <button type="button" className="bz-btn bz-btn--ghost" onClick={() => resume(a.id)}>
-                      <Play size={13} /> Resume
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                ) : (
+                  <StatusDot status={row.status === 'active' ? 'active' : 'paused'} />
+                )}
+              </td>
+              <td data-label="Messages" className="text-slate-300">
+                {loading ? '—' : row.messageCount.toLocaleString()}
+              </td>
+              <td data-label="Last activity" className="text-slate-500">
+                {row.lastActivityAt === new Date(0).toISOString()
+                  ? '—'
+                  : relativeTime(row.lastActivityAt)}
+              </td>
+              <td data-label="">
+                {row.status === 'active' ? (
+                  <button type="button" className="bz-btn bz-btn--ghost" onClick={() => setPaused(true)}>
+                    <Pause size={13} /> Pause
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="bz-btn bz-btn--ghost"
+                    onClick={() => {
+                      if (!live?.whatsapp.linked) {
+                        setNotice('Link WhatsApp from Authenticate before resuming the agent.')
+                        return
+                      }
+                      setPaused(false)
+                    }}
+                  >
+                    <Play size={13} /> Resume
+                  </button>
+                )}
+              </td>
+            </tr>
           </tbody>
         </table>
       </MotionIn>
 
-      <MotionIn delay={120}>
+      <MotionIn delay={120} className="mt-4 flex flex-wrap gap-2">
+        <Link href="/dashboard/authenticate" className="bz-btn bz-btn--primary bz-btn--glow">
+          <Plus size={15} /> Link WhatsApp
+        </Link>
         <button
           type="button"
-          className="bz-btn bz-btn--primary bz-btn--glow mt-4"
+          className="bz-btn bz-btn--ghost"
           onClick={() =>
-            setNotice(
-              'Creating a new automation needs a connected channel. Connect apps from Authenticate first (demo).',
-            )
+            setNotice('Other platforms (Instagram / Telegram / Messenger) stay unavailable until their live connectors ship.')
           }
         >
-          <Plus size={15} /> New Automation
+          New Automation
         </button>
       </MotionIn>
     </>

@@ -106,20 +106,18 @@ function MessagesInner() {
   }, [isSignedIn, tokenFn])
 
   const list = useMemo(() => {
-    const base =
-      platform === 'whatsapp' || platform === 'all'
-        ? [...live, ...(live.length === 0 ? demoThreads().filter((d) => d.platformId === 'whatsapp') : [])]
-        : demoThreads().filter((d) => d.platformId === platform)
+    // WhatsApp is live-only — never pad with demo threads
+    const otherDemo =
+      platform === 'whatsapp'
+        ? []
+        : demoThreads().filter((d) => d.platformId !== 'whatsapp' && (platform === 'all' || d.platformId === platform))
 
     const merged =
-      platform === 'all'
-        ? [
-            ...live,
-            ...demoThreads().filter(
-              (d) => d.platformId !== 'whatsapp' || live.length === 0,
-            ),
-          ]
-        : base
+      platform === 'whatsapp'
+        ? live
+        : platform === 'all'
+          ? [...live, ...otherDemo]
+          : otherDemo
 
     return merged.filter((c) => {
       if (platform !== 'all' && c.platformId !== platform) return false

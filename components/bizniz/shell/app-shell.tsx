@@ -32,7 +32,7 @@ function BiznizFrame({ userName, companyName, children }: Props) {
         <div className="bz-main">
           <div className="bz-demo-bar" role="status">
             <span className="bz-demo-bar__pulse" />
-            DEMO WORKSPACE — connections & counts are illustrative until live connectors ship.
+            LIVE WhatsApp when linked — other channels stay demo until their connectors ship.
           </div>
           <div className="bz-main__inner">{children}</div>
         </div>

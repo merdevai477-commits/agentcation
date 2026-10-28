@@ -132,6 +132,12 @@ export async function startSession(userId, organizationId) {
         emit(userId, 'status', { status: 'qr' })
       }
 
+      if (connection === 'connecting' && !qr) {
+        rt.qrDataUrl = null
+        await persist(userId, organizationId, { status: 'connecting', lastError: null })
+        emit(userId, 'status', { status: 'connecting', qrDataUrl: null })
+      }
+
       if (connection === 'open') {
         rt.qrDataUrl = null
         const phoneE164 = jidToPhone(sock.user?.id)

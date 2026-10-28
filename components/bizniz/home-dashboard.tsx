@@ -2,15 +2,11 @@
 
 import { useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
-import { ArrowUpRight, ChevronRight, MoreVertical, TrendingUp, Users } from 'lucide-react'
-import {
-  BIZNIZ_DEMO_LABEL,
-  DEMO_CHART_SERIES,
-  DEMO_RECENT_LOGS,
-  uniqueClientCount,
-} from '@/lib/bizniz/demo-data'
+import { ArrowUpRight, ChevronRight, Loader2, MoreVertical, TrendingUp, Users } from 'lucide-react'
+import { BIZNIZ_DEMO_LABEL } from '@/lib/bizniz/demo-data'
 import { platformLabel } from '@/lib/bizniz/platforms'
 import { relativeTime, useBiznizApps } from '@/lib/bizniz/store'
+import { useLiveOverview } from '@/lib/bizniz/use-live-overview'
 import type { ConnectedApp, PlatformId } from '@/lib/bizniz/types'
 import { AppDetailModal } from './app-detail-modal'
 import { MotionIn } from './motion-in'
@@ -24,30 +20,53 @@ type Props = {
 }
 
 export function HomeDashboard({ userName }: Props) {
-  const { apps, connectedOnly, pause, resume, disconnect } = useBiznizApps()
+  const { apps, pause, resume, disconnect } = useBiznizApps()
+  const { data: live, loading: liveLoading } = useLiveOverview()
   const [platformFilter, setPlatformFilter] = useState<'all' | PlatformId>('all')
   const [selected, setSelected] = useState<ConnectedApp | null>(null)
   const [menuId, setMenuId] = useState<string | null>(null)
 
+  const mergedApps = useMemo(() => {
+    return apps.map((app) => {
+      if (app.platformId !== 'whatsapp' || !live?.whatsapp) return app
+      const wa = live.whatsapp
+      return {
+        ...app,
+        status: wa.status,
+        accountLabel: wa.accountLabel,
+        connectedAt: wa.linked ? wa.session.lastQrAt || new Date().toISOString() : undefined,
+        automationPaused: wa.status !== 'active',
+        messagesThisMonth: wa.messagesThisMonth,
+        messageDeltaPct: wa.messageDeltaPct,
+      } satisfies ConnectedApp
+    })
+  }, [apps, live])
+
   const chart = useMemo(() => {
-    const series = DEMO_CHART_SERIES
-    if (platformFilter === 'all') return series
-    const scale =
-      platformFilter === 'whatsapp'
-        ? 1
-        : platformFilter === 'instagram'
-          ? 0.7
-          : platformFilter === 'telegram'
-            ? 0.35
-            : 0.25
-    return series.map((p) => ({ ...p, value: Math.round(p.value * scale) }))
-  }, [platformFilter])
+    const series = live?.chart?.length
+      ? live.chart
+      : Array.from({ length: 14 }, (_, i) => {
+          const d = new Date()
+          d.setUTCDate(d.getUTCDate() - (13 - i))
+          return {
+            date: d.toISOString().slice(0, 10),
+            label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+            value: 0,
+          }
+        })
+    if (platformFilter === 'all' || platformFilter === 'whatsapp') return series
+    return series.map((p) => ({ ...p, value: 0 }))
+  }, [live, platformFilter])
 
   const max = Math.max(...chart.map((c) => c.value), 1)
+  const recentLogs = live?.recentLogs || []
+  const clients = live?.clients || []
+  const clientCount = live?.whatsapp.clientCount ?? 0
+  const waSummary = mergedApps.filter((a) => a.platformId === 'whatsapp')
   const summaryApps =
-    connectedOnly.length > 0
-      ? connectedOnly
-      : apps.filter((a) => a.status !== 'disconnected').slice(0, 4)
+    platformFilter === 'all'
+      ? waSummary
+      : mergedApps.filter((a) => a.platformId === platformFilter)
 
   return (
     <>
@@ -58,19 +77,22 @@ export function HomeDashboard({ userName }: Props) {
         />
       </MotionIn>
 
-      <p className="bz-hint mb-5">{BIZNIZ_DEMO_LABEL}</p>
+      <p className="bz-hint mb-5 flex items-center gap-2">
+        {liveLoading ? <Loader2 size={12} className="animate-spin" /> : null}
+        {BIZNIZ_DEMO_LABEL}
+      </p>
 
       <div className="bz-home-grid">
         <MotionIn as="section" className="bz-card bz-glass bz-span-8" delay={40}>
           <div className="bz-card__head">
             <div>
               <h2>AI Automations</h2>
-              <p className="bz-card__meta">Incoming volume by connected channel</p>
+              <p className="bz-card__meta">Live WhatsApp volume from your linked session</p>
             </div>
             <span className="bz-chip">This Month</span>
           </div>
           {summaryApps.length === 0 ? (
-            <Empty text="No connected apps yet. Connect a channel from Authenticate." href="/dashboard/authenticate" />
+            <Empty text="Connect WhatsApp from Authenticate to see live volume." href="/dashboard/authenticate" />
           ) : (
             <div className="bz-platform-grid">
               {summaryApps.map((app, i) => (
@@ -92,10 +114,14 @@ export function HomeDashboard({ userName }: Props) {
                     <ArrowUpRight size={14} className="text-slate-500 transition group-hover:text-violet-300" />
                   </div>
                   <p className="bz-platform-card__value">
-                    {app.messagesThisMonth.toLocaleString()}
+                    {liveLoading && app.platformId === 'whatsapp' ? (
+                      <Loader2 size={18} className="animate-spin text-slate-400" />
+                    ) : (
+                      app.messagesThisMonth.toLocaleString()
+                    )}
                   </p>
                   <div className="mt-1 flex items-center justify-between text-xs">
-                    {typeof app.messageDeltaPct === 'number' ? (
+                    {typeof app.messageDeltaPct === 'number' && app.messagesThisMonth > 0 ? (
                       <span
                         className={cn(
                           'inline-flex items-center gap-1 font-medium',
@@ -106,7 +132,7 @@ export function HomeDashboard({ userName }: Props) {
                         {Math.abs(app.messageDeltaPct)}%
                       </span>
                     ) : (
-                      <span className="text-slate-500">—</span>
+                      <span className="text-slate-500">live</span>
                     )}
                     <span className="text-slate-500">messages</span>
                   </div>
@@ -121,7 +147,7 @@ export function HomeDashboard({ userName }: Props) {
             <h2>Connected Apps</h2>
           </div>
           <ul className="space-y-1">
-            {apps.map((app) => (
+            {mergedApps.map((app) => (
               <li key={app.id} className="relative">
                 <button type="button" className="bz-row" onClick={() => setSelected(app)}>
                   <span className="bz-platform-card__icon bz-platform-card__icon--sm">
@@ -129,8 +155,18 @@ export function HomeDashboard({ userName }: Props) {
                   </span>
                   <span className="flex-1 text-start text-sm text-slate-200">
                     {platformLabel(app.platformId)}
+                    {app.platformId === 'whatsapp' && app.accountLabel ? (
+                      <span className="mt-0.5 block truncate text-[10px] text-slate-500">{app.accountLabel}</span>
+                    ) : null}
                   </span>
-                  <StatusDot status={app.status} />
+                  {app.platformId === 'whatsapp' &&
+                  (live?.whatsapp.session.status === 'connecting' ||
+                    live?.whatsapp.session.status === 'reconnecting' ||
+                    live?.whatsapp.session.status === 'qr') ? (
+                    <Loader2 size={14} className="animate-spin text-amber-300" />
+                  ) : (
+                    <StatusDot status={app.status} />
+                  )}
                   <ChevronRight size={14} className="text-slate-600" />
                   <span
                     className="bz-icon-btn bz-icon-btn--sm"
@@ -178,7 +214,7 @@ export function HomeDashboard({ userName }: Props) {
           <div className="bz-card__head">
             <div>
               <h2>Total Messages</h2>
-              <p className="bz-card__meta">Volume over the selected range</p>
+              <p className="bz-card__meta">WhatsApp volume from your linked inbox</p>
             </div>
             <select
               className="bz-select"
@@ -193,7 +229,7 @@ export function HomeDashboard({ userName }: Props) {
               <option value="messenger">Messenger</option>
             </select>
           </div>
-          <div className="bz-chart" role="img" aria-label="Message volume chart (demo)">
+          <div className="bz-chart" role="img" aria-label="Message volume chart">
             {chart.map((point, i) => (
               <div key={point.date} className="bz-chart__col">
                 <div
@@ -206,11 +242,15 @@ export function HomeDashboard({ userName }: Props) {
                   }
                   title={`${point.label}: ${point.value}`}
                 />
-                <span>{point.label.replace('Oct ', '')}</span>
+                <span>{point.label.replace(/^[A-Za-z]+ /, '')}</span>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[11px] text-slate-500">Demo series — not live production analytics.</p>
+          <p className="mt-3 text-[11px] text-slate-500">
+            {platformFilter === 'instagram' || platformFilter === 'telegram' || platformFilter === 'messenger'
+              ? 'No live connector for this channel yet — chart stays empty.'
+              : 'Live WhatsApp series from stored conversations.'}
+          </p>
         </MotionIn>
 
         <MotionIn as="section" className="bz-card bz-glass bz-span-4" delay={160}>
@@ -231,23 +271,29 @@ export function HomeDashboard({ userName }: Props) {
               </Link>
             ))}
           </div>
-          <ul className="space-y-1.5">
-            {DEMO_RECENT_LOGS.slice(0, 3).map((log) => (
-              <li key={log.id}>
-                <Link href={`/dashboard/messages?c=${log.conversationId}`} className="bz-msg-row">
-                  <span className="bz-avatar bz-avatar--sm">{log.initials}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="truncate text-sm text-white">{log.clientName}</span>
-                      <PlatformIcon id={log.platformId} size={12} />
+          {recentLogs.length === 0 ? (
+            <p className="px-1 py-6 text-center text-xs text-slate-500">
+              {liveLoading ? 'Loading live messages…' : 'No WhatsApp messages yet.'}
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {recentLogs.slice(0, 3).map((log) => (
+                <li key={log.id}>
+                  <Link href={`/dashboard/messages?c=${log.conversationId}`} className="bz-msg-row">
+                    <span className="bz-avatar bz-avatar--sm">{log.initials}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm text-white">{log.clientName}</span>
+                        <PlatformIcon id={log.platformId} size={12} />
+                      </div>
+                      <p className="truncate text-xs text-slate-500">{log.customerMessage}</p>
                     </div>
-                    <p className="truncate text-xs text-slate-500">{log.customerMessage}</p>
-                  </div>
-                  <span className="shrink-0 text-[10px] text-slate-600">{relativeTime(log.at)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+                    <span className="shrink-0 text-[10px] text-slate-600">{relativeTime(log.at)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </MotionIn>
 
         <MotionIn as="section" className="bz-card bz-glass bz-span-8" delay={200}>
@@ -257,28 +303,34 @@ export function HomeDashboard({ userName }: Props) {
               View All
             </Link>
           </div>
-          <ul className="space-y-1.5">
-            {DEMO_RECENT_LOGS.slice(0, 3).map((log) => (
-              <li key={log.id}>
-                <Link href={`/dashboard/messages?c=${log.conversationId}`} className="bz-log-row">
-                  <span className="bz-avatar">{log.initials}</span>
-                  <span className="w-28 truncate text-sm text-white">{log.clientName}</span>
-                  <span className="flex w-24 items-center gap-1 text-xs text-slate-400">
-                    <PlatformIcon id={log.platformId} size={13} />
-                    {platformLabel(log.platformId)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-slate-400">
-                    “{log.customerMessage}”
-                  </span>
-                  <span className="hidden text-violet-400/70 sm:inline">→</span>
-                  <span className="hidden min-w-0 flex-1 truncate text-xs text-violet-200/85 sm:block">
-                    {log.aiResponse}
-                  </span>
-                  <span className="shrink-0 text-[11px] text-slate-500">{relativeTime(log.at)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {recentLogs.length === 0 ? (
+            <p className="px-1 py-8 text-center text-xs text-slate-500">
+              {liveLoading ? 'Loading…' : 'Logs appear here when customers message your linked WhatsApp.'}
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {recentLogs.slice(0, 5).map((log) => (
+                <li key={log.id}>
+                  <Link href={`/dashboard/messages?c=${log.conversationId}`} className="bz-log-row">
+                    <span className="bz-avatar">{log.initials}</span>
+                    <span className="w-28 truncate text-sm text-white">{log.clientName}</span>
+                    <span className="flex w-24 items-center gap-1 text-xs text-slate-400">
+                      <PlatformIcon id={log.platformId} size={13} />
+                      {platformLabel(log.platformId)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs text-slate-400">
+                      “{log.customerMessage}”
+                    </span>
+                    <span className="hidden text-violet-400/70 sm:inline">→</span>
+                    <span className="hidden min-w-0 flex-1 truncate text-xs text-violet-200/85 sm:block">
+                      {log.aiResponse || '—'}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-slate-500">{relativeTime(log.at)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </MotionIn>
 
         <MotionIn as="section" className="bz-card bz-glass bz-span-4" delay={240}>
@@ -298,15 +350,15 @@ export function HomeDashboard({ userName }: Props) {
             </div>
             <div>
               <div className="bz-avatar-stack mb-2">
-                {['KS', 'NF', 'OH', 'SB'].map((i) => (
-                  <span key={i} className="bz-avatar bz-avatar--sm">
-                    {i}
+                {(clients.length ? clients : [{ initials: '?' }]).slice(0, 4).map((c, i) => (
+                  <span key={`${c.initials}-${i}`} className="bz-avatar bz-avatar--sm">
+                    {c.initials}
                   </span>
                 ))}
               </div>
-              <p className="text-3xl font-semibold tracking-tight text-white">{uniqueClientCount()}</p>
-              <p className="text-xs font-medium text-emerald-400">+3 this month</p>
-              <p className="mt-1 text-[10px] text-slate-500">Unique contacts · demo</p>
+              <p className="text-3xl font-semibold tracking-tight text-white">{clientCount}</p>
+              <p className="text-xs font-medium text-emerald-400">WhatsApp contacts</p>
+              <p className="mt-1 text-[10px] text-slate-500">From your linked session</p>
             </div>
           </div>
         </MotionIn>

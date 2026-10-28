@@ -55,7 +55,7 @@ export default function AuthenticatePage() {
 
       <MotionIn delay={40}>
         <p className="mb-4 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100/90">
-          واتساب متصل فعليًا عبر جلسة Baileys (QR زي واتساب ويب) والرد التلقائي عبر Qwen 3.7 Flash.
+          واتساب متصل فعليًا عبر جلسة QR (زي واتساب ويب) مع رد تلقائي حسب قصة البيزنس.
           باقي المنصات لسه demo محلي للاختبار.
         </p>
       </MotionIn>

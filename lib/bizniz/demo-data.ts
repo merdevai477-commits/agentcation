@@ -13,38 +13,39 @@ import type {
   RecentLog,
 } from './types'
 
-export const BIZNIZ_DEMO_LABEL = 'DEMO DATA — illustrative Business Agents workspace'
+export const BIZNIZ_DEMO_LABEL =
+  'LIVE WhatsApp when linked · other channels remain demo until their connectors ship'
 
 export const DEMO_CONNECTED_APPS: ConnectedApp[] = [
   {
     id: 'app_wa_1',
     platformId: 'whatsapp',
-    status: 'active',
-    accountLabel: '+20 10 •••• 4821',
-    connectedAt: '2026-10-01T10:00:00Z',
-    automationPaused: false,
-    messagesThisMonth: 1240,
-    messageDeltaPct: 18,
+    status: 'disconnected',
+    accountLabel: undefined,
+    connectedAt: undefined,
+    automationPaused: true,
+    messagesThisMonth: 0,
+    messageDeltaPct: undefined,
   },
   {
     id: 'app_ig_1',
     platformId: 'instagram',
-    status: 'active',
-    accountLabel: '@acme.store',
-    connectedAt: '2026-09-18T14:20:00Z',
-    automationPaused: false,
-    messagesThisMonth: 860,
-    messageDeltaPct: 12,
+    status: 'disconnected',
+    accountLabel: undefined,
+    connectedAt: undefined,
+    automationPaused: true,
+    messagesThisMonth: 0,
+    messageDeltaPct: undefined,
   },
   {
     id: 'app_tg_1',
     platformId: 'telegram',
-    status: 'paused',
-    accountLabel: '@acme_support_bot',
-    connectedAt: '2026-08-02T09:00:00Z',
+    status: 'disconnected',
+    accountLabel: undefined,
+    connectedAt: undefined,
     automationPaused: true,
-    messagesThisMonth: 420,
-    messageDeltaPct: -4,
+    messagesThisMonth: 0,
+    messageDeltaPct: undefined,
   },
   {
     id: 'app_ms_1',
@@ -259,29 +260,14 @@ export const DEMO_AUTOMATIONS: Automation[] = [
     id: 'auto_wa_support',
     name: 'WhatsApp Support Agent',
     platformId: 'whatsapp',
-    status: 'active',
-    lastActivityAt: '2026-10-19T13:12:00Z',
-    messageCount: 1240,
-  },
-  {
-    id: 'auto_ig_dm',
-    name: 'Instagram DM Assistant',
-    platformId: 'instagram',
-    status: 'active',
-    lastActivityAt: '2026-10-19T14:40:00Z',
-    messageCount: 860,
-  },
-  {
-    id: 'auto_tg_faq',
-    name: 'Telegram FAQ Bot',
-    platformId: 'telegram',
     status: 'paused',
-    lastActivityAt: '2026-10-17T08:00:00Z',
-    messageCount: 420,
+    lastActivityAt: new Date(0).toISOString(),
+    messageCount: 0,
   },
 ]
 
-export const STORAGE_KEY = 'agentication_bizniz_apps_v1'
+export const STORAGE_KEY = 'agentication_bizniz_apps_v2'
+export const AUTO_STORAGE_KEY = 'agentication_bizniz_autos_v2'
 
 export function uniqueClientCount(clients: BiznizClient[] = DEMO_CLIENTS): number {
   return clients.length

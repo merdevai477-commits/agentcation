@@ -144,6 +144,43 @@ export async function fetchLiveConversations(getToken: TokenFn, platform = 'what
   return data.conversations
 }
 
+export type BiznizOverview = {
+  success: boolean
+  userId: string
+  whatsapp: {
+    session: WhatsAppSession
+    linked: boolean
+    accountLabel?: string
+    status: 'active' | 'paused' | 'error' | 'disconnected'
+    messagesThisMonth: number
+    messageDeltaPct: number
+    lastActivityAt: string | null
+    clientCount: number
+  }
+  chart: { date: string; label: string; value: number }[]
+  recentLogs: {
+    id: string
+    clientName: string
+    initials: string
+    platformId: 'whatsapp'
+    customerMessage: string
+    aiResponse: string
+    at: string
+    conversationId: string
+  }[]
+  clients: {
+    id: string
+    name: string
+    initials: string
+    lastPreview: string
+    lastMessageAt: string
+  }[]
+}
+
+export async function fetchBiznizOverview(getToken: TokenFn) {
+  return apiFetch<BiznizOverview>('/api/bizniz/overview', getToken)
+}
+
 export async function sendTrainerMessage(
   getToken: TokenFn,
   message: string,

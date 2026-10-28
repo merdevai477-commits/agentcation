@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { CheckCircle2, Link2Off, Loader2, QrCode, ShieldCheck } from 'lucide-react'
 import {
@@ -43,21 +43,37 @@ export function WhatsAppSessionCard({
   const [session, setSession] = useState<WhatsAppSession | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [linkingHint, setLinkingHint] = useState(false)
+  const sawQr = useRef(false)
 
   const tokenFn = useCallback(() => getToken(), [getToken])
 
   const applySession = useCallback((next: Partial<WhatsAppSession> & { status?: string }) => {
-    setSession((prev) => ({
-      userId: (next.userId as string | undefined) || prev?.userId,
-      status: next.status || prev?.status || 'stopped',
-      phoneE164: next.phoneE164 !== undefined ? (next.phoneE164 as string | null) : prev?.phoneE164 ?? null,
-      displayName:
-        next.displayName !== undefined ? (next.displayName as string | null) : prev?.displayName ?? null,
-      lastError: next.lastError !== undefined ? (next.lastError as string | null) : prev?.lastError ?? null,
-      qrDataUrl:
-        next.qrDataUrl !== undefined ? (next.qrDataUrl as string | null) : prev?.qrDataUrl ?? null,
-      lastQrAt: next.lastQrAt !== undefined ? (next.lastQrAt as string | null) : prev?.lastQrAt ?? null,
-    }))
+    setSession((prev) => {
+      const status = next.status || prev?.status || 'stopped'
+      const qrDataUrl =
+        next.qrDataUrl !== undefined ? (next.qrDataUrl as string | null) : prev?.qrDataUrl ?? null
+      if (status === 'qr' && qrDataUrl) sawQr.current = true
+      if (status === 'ready' || status === 'logged_out' || status === 'stopped') {
+        sawQr.current = false
+        setLinkingHint(false)
+      } else if (
+        sawQr.current &&
+        (status === 'connecting' || (!qrDataUrl && status !== 'qr'))
+      ) {
+        setLinkingHint(true)
+      }
+      return {
+        userId: (next.userId as string | undefined) || prev?.userId,
+        status,
+        phoneE164: next.phoneE164 !== undefined ? (next.phoneE164 as string | null) : prev?.phoneE164 ?? null,
+        displayName:
+          next.displayName !== undefined ? (next.displayName as string | null) : prev?.displayName ?? null,
+        lastError: next.lastError !== undefined ? (next.lastError as string | null) : prev?.lastError ?? null,
+        qrDataUrl,
+        lastQrAt: next.lastQrAt !== undefined ? (next.lastQrAt as string | null) : prev?.lastQrAt ?? null,
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -66,7 +82,10 @@ export function WhatsAppSessionCard({
     void (async () => {
       try {
         const s = await fetchWhatsAppSession(tokenFn)
-        if (!cancelled) setSession(s)
+        if (!cancelled) {
+          if (s.status === 'qr' && s.qrDataUrl) sawQr.current = true
+          setSession(s)
+        }
       } catch (err) {
         if (!cancelled) setError((err as Error).message)
       }
@@ -74,10 +93,14 @@ export function WhatsAppSessionCard({
 
     const unsub = subscribeWhatsAppEvents(tokenFn, (ev) => {
       if (ev.type === 'qr') {
+        sawQr.current = true
+        setLinkingHint(false)
         applySession({ status: 'qr', qrDataUrl: (ev.qrDataUrl as string) || null })
         return
       }
       if (ev.type === 'ready') {
+        sawQr.current = false
+        setLinkingHint(false)
         applySession({
           status: 'ready',
           phoneE164: (ev.phoneE164 as string) || null,
@@ -106,7 +129,12 @@ export function WhatsAppSessionCard({
     setError('')
     try {
       const fn = action === 'start' ? startWhatsApp : action === 'stop' ? stopWhatsApp : clearWhatsApp
-      setSession(await fn(tokenFn))
+      const next = await fn(tokenFn)
+      if (action === 'clear') {
+        sawQr.current = false
+        setLinkingHint(false)
+      }
+      setSession(next)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -116,8 +144,16 @@ export function WhatsAppSessionCard({
 
   const status = session?.status || 'stopped'
   const linked = status === 'ready'
+  const loading =
+    busy === 'start' ||
+    status === 'connecting' ||
+    status === 'reconnecting' ||
+    linkingHint ||
+    (status === 'qr' && !session?.qrDataUrl)
+  const waitingScan = status === 'qr' && Boolean(session?.qrDataUrl)
   const hasAccount = Boolean(session?.phoneE164) || status === 'reconnecting' || linked
   const shell = professional || compact
+  const badgeWait = loading || waitingScan
 
   return (
     <article className={cn(!shell && 'bz-card bz-glass', shell && 'bz-wa-pro')}>
@@ -134,11 +170,19 @@ export function WhatsAppSessionCard({
         <span
           className={cn(
             'bz-wa-pro__badge',
-            linked ? 'is-on' : status === 'reconnecting' || status === 'qr' ? 'is-wait' : 'is-off',
+            linked ? 'is-on' : badgeWait ? 'is-wait' : 'is-off',
           )}
         >
-          {linked ? <CheckCircle2 size={14} /> : status === 'reconnecting' ? <Loader2 size={14} className="animate-spin" /> : <Link2Off size={14} />}
-          {statusLabel(status)}
+          {linked ? (
+            <CheckCircle2 size={14} />
+          ) : loading ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : waitingScan ? (
+            <QrCode size={14} />
+          ) : (
+            <Link2Off size={14} />
+          )}
+          {loading && status === 'qr' ? 'جاري الربط…' : statusLabel(status)}
         </span>
       </div>
 
@@ -159,26 +203,51 @@ export function WhatsAppSessionCard({
           <span>الحالة</span>
           <strong
             className={
-              linked ? 'text-emerald-300' : status === 'reconnecting' ? 'text-amber-200' : 'text-slate-300'
+              linked
+                ? 'text-emerald-300'
+                : loading || waitingScan
+                  ? 'text-amber-200'
+                  : 'text-slate-300'
             }
           >
-            {statusLabel(status)}
+            {loading && !linked ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Loader2 size={13} className="animate-spin" />
+                {status === 'reconnecting' ? 'إعادة اتصال…' : 'جاري الربط…'}
+              </span>
+            ) : (
+              statusLabel(status)
+            )}
           </strong>
         </div>
       </div>
 
-      {status === 'qr' && session?.qrDataUrl ? (
+      {loading && !waitingScan ? (
+        <div className="bz-wa-pro__loading" role="status" aria-live="polite">
+          <Loader2 size={22} className="animate-spin text-amber-300" />
+          <div>
+            <p className="text-sm font-medium text-white">جاري تحميل واتساب…</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+              {status === 'reconnecting'
+                ? 'بنرجع نربط الجلسة المحفوظة من غير QR جديد.'
+                : 'بعد المسح بنكمّل الربط — استنى ثواني لحد ما تظهر «مرتبط».'}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {waitingScan ? (
         <div className="bz-wa-pro__qr">
           <div className="bz-wa-pro__qr-frame">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={session.qrDataUrl} alt="WhatsApp QR" />
+            <img src={session?.qrDataUrl || ''} alt="WhatsApp QR" />
           </div>
           <div>
             <p className="flex items-center gap-1.5 text-sm font-medium text-white">
               <QrCode size={16} /> امسح من الموبايل
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز. الجلسة مربوطة بـ user id بتاعك فقط.
+              واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز. بعد المسح هتشوف شارة تحميل لحد ما يتم الربط.
             </p>
           </div>
         </div>
@@ -189,9 +258,10 @@ export function WhatsAppSessionCard({
           <ShieldCheck size={14} /> الرقم مربوط بحسابك. لو الاتصال قطع، النظام يعيد الربط تلقائي من غير QR
           جديد (طالما ممسحتش الجلسة).
         </p>
-      ) : status === 'reconnecting' ? (
-        <p className="bz-wa-pro__hint">
-          جاري إعادة الاتصال بالجلسة المحفوظة… لو فشل أكتر من مرة اضغط تشغيل أو امسح وامسح QR من الأول.
+      ) : loading ? (
+        <p className="bz-wa-pro__hint inline-flex items-center gap-1.5">
+          <Loader2 size={13} className="animate-spin" />
+          التحميل شغّال — متقفلش الصفحة لحد ما الحالة تبقى مرتبط.
         </p>
       ) : (
         <p className="bz-wa-pro__hint">
@@ -209,11 +279,11 @@ export function WhatsAppSessionCard({
         <button
           type="button"
           className="bz-btn bz-btn--primary bz-btn--glow"
-          disabled={!!busy || status === 'ready' || status === 'connecting' || status === 'reconnecting'}
+          disabled={!!busy || status === 'ready' || status === 'connecting' || status === 'reconnecting' || linkingHint}
           onClick={() => void run('start')}
         >
-          {busy === 'start' ? <Loader2 size={14} className="animate-spin" /> : null}
-          {busy === 'start' ? 'جاري التشغيل…' : 'تشغيل'}
+          {busy === 'start' || loading ? <Loader2 size={14} className="animate-spin" /> : null}
+          {busy === 'start' || loading ? 'جاري التشغيل…' : 'تشغيل'}
         </button>
         <button
           type="button"
