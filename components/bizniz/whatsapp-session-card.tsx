@@ -35,7 +35,7 @@ function statusTone(status: string) {
   return 'text-slate-400'
 }
 
-export function WhatsAppSessionCard() {
+export function WhatsAppSessionCard({ compact = false }: { compact?: boolean }) {
   const { getToken, isSignedIn } = useAuth()
   const [session, setSession] = useState<WhatsAppSession | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -118,25 +118,38 @@ export function WhatsAppSessionCard() {
   const connected = status === 'ready'
 
   return (
-    <article className="bz-card bz-glass">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="bz-platform-card__icon">
-            <PlatformIcon id="whatsapp" size={22} />
-          </span>
-          <div>
-            <h2 className="font-medium text-white">WhatsApp</h2>
-            <p className={`mt-0.5 text-xs ${statusTone(status)}`}>{statusLabel(status)}</p>
-            {connected ? (
-              <p className="mt-1 text-xs text-slate-400">
-                {[session?.displayName, session?.phoneE164].filter(Boolean).join(' · ') || 'Connected'}
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-slate-500">امسح QR من واتساب على الموبايل (أجهزة مرتبطة)</p>
-            )}
+    <article className={compact ? 'space-y-3' : 'bz-card bz-glass'}>
+      {!compact ? (
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="bz-platform-card__icon">
+              <PlatformIcon id="whatsapp" size={22} />
+            </span>
+            <div>
+              <h2 className="font-medium text-white">WhatsApp</h2>
+              <p className={`mt-0.5 text-xs ${statusTone(status)}`}>{statusLabel(status)}</p>
+              {connected ? (
+                <p className="mt-1 text-xs text-slate-400">
+                  {[session?.displayName, session?.phoneE164].filter(Boolean).join(' · ') || 'Connected'}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-500">امسح QR من واتساب على الموبايل (أجهزة مرتبطة)</p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div>
+          <p className={`text-sm ${statusTone(status)}`}>{statusLabel(status)}</p>
+          {connected ? (
+            <p className="mt-1 text-xs text-slate-400">
+              {[session?.displayName, session?.phoneE164].filter(Boolean).join(' · ') || 'Connected'}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">امسح QR من واتساب على الموبايل (أجهزة مرتبطة)</p>
+          )}
+        </div>
+      )}
 
       {status === 'qr' && session?.qrDataUrl ? (
         <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-black/30 p-4">
