@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { useAuth } from '@clerk/nextjs'
+import { useAuth, useUser } from '@clerk/nextjs'
 import { MessageCircle, Send, Sparkles, X } from 'lucide-react'
 import { sendTrainerMessage } from '@/lib/bizniz/api'
 import { customizeCopy } from '@/lib/bizniz/customize-copy'
@@ -15,17 +15,32 @@ type Props = {
 
 type Bubble = { id: string; role: 'user' | 'assistant'; text: string }
 
+function welcomeFor(lang: Lang, firstName: string) {
+  if (lang === 'ar') {
+    return `أهلاً يا ${firstName} — أنا ديفي. عارف إنك صاحب الحساب. كلّمني عربي فصحى أو عامية أو English؛ هرد بنفس لغتك، وأحفظ اسم البيزنز والنبرة والخدمات عشان واتساب يرد بطريقتك.`
+  }
+  return `Hi ${firstName} — I’m Devi. I know you’re the account owner. Write in English, Arabic, or dialect; I’ll mirror your language, learn what you want, and save it so WhatsApp replies in your style.`
+}
+
 export function DeviClerk({ lang, onFiled }: Props) {
   const t = customizeCopy(lang)
   const { getToken, isSignedIn } = useAuth()
+  const { user } = useUser()
+  const firstName =
+    user?.firstName ||
+    user?.fullName?.split(' ')[0] ||
+    user?.username ||
+    (lang === 'ar' ? 'صاحبي' : 'there')
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
-  const [messages, setMessages] = useState<Bubble[]>([
-    { id: 'welcome', role: 'assistant', text: t.deviWelcome },
-  ])
+  const [messages, setMessages] = useState<Bubble[]>([])
   const endRef = useRef<HTMLDivElement>(null)
   const tokenFn = useCallback(() => getToken(), [getToken])
+
+  useEffect(() => {
+    setMessages([{ id: 'welcome', role: 'assistant', text: welcomeFor(lang, firstName) }])
+  }, [lang, firstName])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })

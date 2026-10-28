@@ -45,7 +45,7 @@ const en = {
   deviPlaceholder: 'Tell me your business — name, services, tone, prices, FAQs…',
   deviSend: 'Send',
   deviWelcome:
-    'Hi — I’m Devi. Talk to me like you talk to customers. I’ll learn your business name, tone, services, hours, prices, and FAQs, then save them so WhatsApp replies in your style.',
+    'Hi — I’m Devi. I know who you are. Write Arabic or English (or dialect); I’ll reply the same way and train your WhatsApp agent.',
   deviAck:
     'Saved into your Business Story. Keep chatting to refine tone and answers.',
   backSite: '← Back to site',
@@ -97,7 +97,7 @@ const ar: Dict = {
   deviPlaceholder: 'قولي عن البيزنز — الاسم، الخدمات، النبرة، الأسعار، الأسئلة الشائعة…',
   deviSend: 'إرسال',
   deviWelcome:
-    'أهلاً — أنا ديفي. كلّمني بنفس أسلوبك مع العملاء. هتعلّم اسم النشاط والنبرة والخدمات والساعات والأسعار والـ FAQ، وأحفظها عشان واتساب يرد بطريقتك.',
+    'أهلاً — أنا ديفي. عارف مين صاحب الحساب. اكتب عربي أو إنجليزي أو عامية؛ هرد بنفس لغتك وأدرّب وكيل واتساب على طريقتك.',
   deviAck:
     'اتحفظ في قصة البيزنز. كمّل الشات عشان نظبط الأسلوب أكتر.',
   backSite: '← الرجوع للموقع',
