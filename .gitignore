@@ -24,3 +24,4 @@ node_modules
 # Backend build artifacts
 backend/node_modules/
 *.tsbuildinfo
+.wa-sessions/

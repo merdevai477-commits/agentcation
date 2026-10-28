@@ -13,18 +13,19 @@ import { env } from '../../config/env.js'
 import { handleIncomingText } from '../bizniz/reply.js'
 
 const logger = pino({ level: 'silent' })
+/** @type {Map<string, any>} keyed by Clerk userId */
 const runtimes = new Map()
 
 function sessionsRoot() {
   return path.resolve(env.whatsappSessionsDir)
 }
 
-function authPathFor(organizationId) {
-  return path.join(sessionsRoot(), organizationId)
+function authPathFor(userId) {
+  return path.join(sessionsRoot(), userId)
 }
 
-function getRuntime(organizationId) {
-  let rt = runtimes.get(organizationId)
+function getRuntime(userId) {
+  let rt = runtimes.get(userId)
   if (!rt) {
     rt = {
       sock: null,
@@ -33,21 +34,22 @@ function getRuntime(organizationId) {
       events: new EventEmitter(),
     }
     rt.events.setMaxListeners(50)
-    runtimes.set(organizationId, rt)
+    runtimes.set(userId, rt)
   }
   return rt
 }
 
-function emit(organizationId, type, payload = {}) {
-  const rt = getRuntime(organizationId)
-  rt.events.emit('event', { type, ...payload, at: new Date().toISOString() })
+function emit(userId, type, payload = {}) {
+  const rt = getRuntime(userId)
+  rt.events.emit('event', { type, ...payload, userId, at: new Date().toISOString() })
 }
 
-async function persist(organizationId, data) {
-  const authDir = authPathFor(organizationId)
+async function persist(userId, organizationId, data) {
+  const authDir = authPathFor(userId)
   return prisma.whatsAppSession.upsert({
-    where: { organizationId },
+    where: { userId },
     create: {
+      userId,
       organizationId,
       authDir,
       status: data.status || 'stopped',
@@ -57,6 +59,7 @@ async function persist(organizationId, data) {
       lastError: data.lastError ?? null,
     },
     update: {
+      organizationId,
       status: data.status,
       phoneE164: data.phoneE164 === undefined ? undefined : data.phoneE164,
       displayName: data.displayName === undefined ? undefined : data.displayName,
@@ -74,10 +77,11 @@ function jidToPhone(jid) {
   return digits ? `+${digits}` : null
 }
 
-export async function getSession(organizationId) {
-  const row = await prisma.whatsAppSession.findUnique({ where: { organizationId } })
-  const rt = getRuntime(organizationId)
+export async function getSession(userId) {
+  const row = await prisma.whatsAppSession.findUnique({ where: { userId } })
+  const rt = getRuntime(userId)
   return {
+    userId,
     status: row?.status || 'stopped',
     phoneE164: row?.phoneE164 || null,
     displayName: row?.displayName || null,
@@ -87,25 +91,25 @@ export async function getSession(organizationId) {
   }
 }
 
-export function subscribe(organizationId, listener) {
-  const rt = getRuntime(organizationId)
+export function subscribe(userId, listener) {
+  const rt = getRuntime(userId)
   rt.events.on('event', listener)
   return () => rt.events.off('event', listener)
 }
 
-export async function startSession(organizationId) {
-  const rt = getRuntime(organizationId)
+export async function startSession(userId, organizationId) {
+  const rt = getRuntime(userId)
   if (rt.sock || rt.starting) {
-    return getSession(organizationId)
+    return getSession(userId)
   }
 
   rt.starting = true
-  fs.mkdirSync(authPathFor(organizationId), { recursive: true })
-  await persist(organizationId, { status: 'connecting', lastError: null })
-  emit(organizationId, 'status', { status: 'connecting' })
+  fs.mkdirSync(authPathFor(userId), { recursive: true })
+  await persist(userId, organizationId, { status: 'connecting', lastError: null })
+  emit(userId, 'status', { status: 'connecting' })
 
   try {
-    const { state, saveCreds } = await useMultiFileAuthState(authPathFor(organizationId))
+    const { state, saveCreds } = await useMultiFileAuthState(authPathFor(userId))
     const { version } = await fetchLatestBaileysVersion()
     const sock = makeWASocket({
       version,
@@ -123,23 +127,23 @@ export async function startSession(organizationId) {
       const { connection, lastDisconnect, qr } = update
       if (qr) {
         rt.qrDataUrl = await QRCode.toDataURL(qr, { margin: 1, width: 320 })
-        await persist(organizationId, { status: 'qr', lastQrAt: new Date(), lastError: null })
-        emit(organizationId, 'qr', { qrDataUrl: rt.qrDataUrl, status: 'qr' })
-        emit(organizationId, 'status', { status: 'qr' })
+        await persist(userId, organizationId, { status: 'qr', lastQrAt: new Date(), lastError: null })
+        emit(userId, 'qr', { qrDataUrl: rt.qrDataUrl, status: 'qr' })
+        emit(userId, 'status', { status: 'qr' })
       }
 
       if (connection === 'open') {
         rt.qrDataUrl = null
         const phoneE164 = jidToPhone(sock.user?.id)
         const displayName = sock.user?.name || sock.user?.verifiedName || null
-        await persist(organizationId, {
+        await persist(userId, organizationId, {
           status: 'ready',
           phoneE164,
           displayName,
           lastError: null,
         })
-        emit(organizationId, 'ready', { status: 'ready', phoneE164, displayName })
-        emit(organizationId, 'status', { status: 'ready', phoneE164, displayName })
+        emit(userId, 'ready', { status: 'ready', phoneE164, displayName })
+        emit(userId, 'status', { status: 'ready', phoneE164, displayName })
       }
 
       if (connection === 'close') {
@@ -149,20 +153,20 @@ export async function startSession(organizationId) {
         rt.starting = false
         rt.qrDataUrl = null
         if (loggedOut) {
-          await persist(organizationId, {
+          await persist(userId, organizationId, {
             status: 'logged_out',
             phoneE164: null,
             displayName: null,
             lastError: 'Logged out',
           })
-          emit(organizationId, 'status', { status: 'logged_out' })
+          emit(userId, 'status', { status: 'logged_out' })
           return
         }
-        await persist(organizationId, {
+        await persist(userId, organizationId, {
           status: 'stopped',
           lastError: lastDisconnect?.error?.message || 'Connection closed',
         })
-        emit(organizationId, 'status', { status: 'stopped' })
+        emit(userId, 'status', { status: 'stopped' })
       }
     })
 
@@ -183,6 +187,7 @@ export async function startSession(organizationId) {
         const contactName = msg.pushName || null
         await handleIncomingText({
           organizationId,
+          userId,
           remoteJid,
           contactName,
           text: text.trim(),
@@ -196,18 +201,18 @@ export async function startSession(organizationId) {
     })
 
     rt.starting = false
-    return getSession(organizationId)
+    return getSession(userId)
   } catch (err) {
     rt.starting = false
     rt.sock = null
-    await persist(organizationId, { status: 'stopped', lastError: err.message })
-    emit(organizationId, 'status', { status: 'stopped', error: err.message })
+    await persist(userId, organizationId, { status: 'stopped', lastError: err.message })
+    emit(userId, 'status', { status: 'stopped', error: err.message })
     throw err
   }
 }
 
-export async function stopSession(organizationId) {
-  const rt = getRuntime(organizationId)
+export async function stopSession(userId, organizationId) {
+  const rt = getRuntime(userId)
   if (rt.sock) {
     try {
       rt.sock.end(undefined)
@@ -218,13 +223,13 @@ export async function stopSession(organizationId) {
   }
   rt.starting = false
   rt.qrDataUrl = null
-  await persist(organizationId, { status: 'stopped', lastError: null })
-  emit(organizationId, 'status', { status: 'stopped' })
-  return getSession(organizationId)
+  await persist(userId, organizationId, { status: 'stopped', lastError: null })
+  emit(userId, 'status', { status: 'stopped' })
+  return getSession(userId)
 }
 
-export async function clearSession(organizationId) {
-  const rt = getRuntime(organizationId)
+export async function clearSession(userId, organizationId) {
+  const rt = getRuntime(userId)
   if (rt.sock) {
     try {
       await rt.sock.logout()
@@ -240,17 +245,17 @@ export async function clearSession(organizationId) {
   rt.starting = false
   rt.qrDataUrl = null
 
-  const dir = authPathFor(organizationId)
+  const dir = authPathFor(userId)
   if (fs.existsSync(dir)) {
     fs.rmSync(dir, { recursive: true, force: true })
   }
 
-  await persist(organizationId, {
+  await persist(userId, organizationId, {
     status: 'logged_out',
     phoneE164: null,
     displayName: null,
     lastError: null,
   })
-  emit(organizationId, 'status', { status: 'logged_out' })
-  return getSession(organizationId)
+  emit(userId, 'status', { status: 'logged_out' })
+  return getSession(userId)
 }

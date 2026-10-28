@@ -22,7 +22,9 @@ model User {
   /// تاريخ_الإنشاء
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  memberships OrganizationMembership[]
+  memberships     OrganizationMembership[]
+  whatsappSession WhatsAppSession?
+  businessStory   BusinessStory?
 
   @@map("users")
 }
@@ -116,9 +118,10 @@ model Model {
   @@map("models")
 }
 
-/// جلسة واتساب (Baileys — جهاز مرتبط)
+/// جلسة واتساب (Baileys — جهاز مرتبط) — جلسة واحدة لكل Clerk userId
 model WhatsAppSession {
   id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @unique @map("user_id") @db.VarChar(255)
   organizationId String    @unique @map("organization_id") @db.Uuid
   status         String    @default("stopped") @db.VarChar(32)
   phoneE164      String?   @map("phone_e164") @db.VarChar(32)
@@ -129,19 +132,22 @@ model WhatsAppSession {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("whatsapp_sessions")
 }
 
-/// قصة البيزنز (JSON) — سياق الردود للـ LLM
+/// قصة البيزنز (JSON) — سياق الردود للـ LLM — واحدة لكل Clerk userId
 model BusinessStory {
   id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.VarChar(255)
   organizationId String   @unique @map("organization_id") @db.Uuid
   payload        Json
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("business_stories")

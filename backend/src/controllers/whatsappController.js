@@ -10,7 +10,8 @@ import {
 export async function sessionStatus(req, res, next) {
   try {
     const { organizationId } = await ensureUserOrg(req.userId)
-    const session = await getSession(organizationId)
+    void organizationId
+    const session = await getSession(req.userId)
     return res.json({ success: true, session })
   } catch (err) {
     return next(err)
@@ -20,7 +21,7 @@ export async function sessionStatus(req, res, next) {
 export async function sessionStart(req, res, next) {
   try {
     const { organizationId } = await ensureUserOrg(req.userId)
-    const session = await startSession(organizationId)
+    const session = await startSession(req.userId, organizationId)
     return res.json({ success: true, session })
   } catch (err) {
     return next(err)
@@ -30,7 +31,7 @@ export async function sessionStart(req, res, next) {
 export async function sessionStop(req, res, next) {
   try {
     const { organizationId } = await ensureUserOrg(req.userId)
-    const session = await stopSession(organizationId)
+    const session = await stopSession(req.userId, organizationId)
     return res.json({ success: true, session })
   } catch (err) {
     return next(err)
@@ -40,7 +41,7 @@ export async function sessionStop(req, res, next) {
 export async function sessionClear(req, res, next) {
   try {
     const { organizationId } = await ensureUserOrg(req.userId)
-    const session = await clearSession(organizationId)
+    const session = await clearSession(req.userId, organizationId)
     return res.json({ success: true, session })
   } catch (err) {
     return next(err)
@@ -49,7 +50,7 @@ export async function sessionClear(req, res, next) {
 
 export async function sessionEvents(req, res, next) {
   try {
-    const { organizationId } = await ensureUserOrg(req.userId)
+    await ensureUserOrg(req.userId)
 
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Cache-Control', 'no-cache, no-transform')
@@ -61,10 +62,10 @@ export async function sessionEvents(req, res, next) {
       res.write(`data: ${JSON.stringify(payload)}\n\n`)
     }
 
-    const current = await getSession(organizationId)
+    const current = await getSession(req.userId)
     send({ type: 'status', ...current })
 
-    const unsub = subscribe(organizationId, send)
+    const unsub = subscribe(req.userId, send)
     const heartbeat = setInterval(() => {
       res.write(`: ping\n\n`)
     }, 15000)

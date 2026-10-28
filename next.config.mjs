@@ -8,6 +8,7 @@ const nextConfig = {
   },
   // Hide the Next.js route badge in development
   devIndicators: false,
+  serverExternalPackages: ['@whiskeysockets/baileys', 'pino', 'qrcode', '@prisma/client'],
 }
 
 export default nextConfig

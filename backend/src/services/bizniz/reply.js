@@ -4,8 +4,8 @@ import { DEFAULT_STORY } from '../../lib/org.js'
 
 const pending = new Map()
 
-export async function handleIncomingText({ organizationId, remoteJid, contactName, text, waMessageId, sendText }) {
-  const key = `${organizationId}:${remoteJid}`
+export async function handleIncomingText({ organizationId, userId, remoteJid, contactName, text, waMessageId, sendText }) {
+  const key = `${userId || organizationId}:${remoteJid}`
   const existing = pending.get(key)
   if (existing) clearTimeout(existing.timer)
 
@@ -57,7 +57,10 @@ async function runReply({ organizationId, remoteJid, job, sendText }) {
     },
   })
 
-  const storyRow = await prisma.businessStory.findUnique({ where: { organizationId } })
+  const storyRow = userId
+    ? (await prisma.businessStory.findUnique({ where: { userId } })) ||
+      (await prisma.businessStory.findUnique({ where: { organizationId } }))
+    : await prisma.businessStory.findUnique({ where: { organizationId } })
   const story = storyRow?.payload && typeof storyRow.payload === 'object' ? storyRow.payload : DEFAULT_STORY
 
   const recent = await prisma.bizMessage.findMany({

@@ -45,7 +45,7 @@ export async function ensureUserOrg(userId) {
           create: { userId, role: 'owner' },
         },
         businessStory: {
-          create: { payload: DEFAULT_STORY },
+          create: { userId, payload: DEFAULT_STORY },
         },
       },
     })

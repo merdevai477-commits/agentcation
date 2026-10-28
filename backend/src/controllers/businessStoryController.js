@@ -21,9 +21,11 @@ function normalizeStory(input) {
 export async function getStory(req, res, next) {
   try {
     const { organizationId } = await ensureUserOrg(req.userId)
-    const row = await prisma.businessStory.findUnique({ where: { organizationId } })
+    const row =
+      (await prisma.businessStory.findUnique({ where: { userId: req.userId } })) ||
+      (await prisma.businessStory.findUnique({ where: { organizationId } }))
     const story = normalizeStory(row?.payload)
-    return res.json({ success: true, story })
+    return res.json({ success: true, story, userId: req.userId })
   } catch (err) {
     return next(err)
   }
@@ -34,11 +36,11 @@ export async function putStory(req, res, next) {
     const { organizationId } = await ensureUserOrg(req.userId)
     const story = normalizeStory(req.body?.story ?? req.body)
     const row = await prisma.businessStory.upsert({
-      where: { organizationId },
-      create: { organizationId, payload: story },
-      update: { payload: story },
+      where: { userId: req.userId },
+      create: { userId: req.userId, organizationId, payload: story },
+      update: { organizationId, payload: story },
     })
-    return res.json({ success: true, story: normalizeStory(row.payload) })
+    return res.json({ success: true, story: normalizeStory(row.payload), userId: req.userId })
   } catch (err) {
     return next(err)
   }

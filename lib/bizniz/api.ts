@@ -1,8 +1,10 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '')
+/** Same-origin Next.js API — no separate backend URL (fixes Failed to fetch on production). */
+const API_BASE = ''
 
 export type WhatsAppSessionStatus = 'stopped' | 'qr' | 'connecting' | 'ready' | 'logged_out'
 
 export type WhatsAppSession = {
+  userId?: string
   status: WhatsAppSessionStatus | string
   phoneE164: string | null
   displayName: string | null
@@ -37,11 +39,7 @@ export const EMPTY_STORY: BusinessStory = {
 
 type TokenFn = () => Promise<string | null>
 
-async function apiFetch<T>(
-  path: string,
-  getToken: TokenFn,
-  init?: RequestInit,
-): Promise<T> {
+async function apiFetch<T>(path: string, getToken: TokenFn, init?: RequestInit): Promise<T> {
   const token = await getToken()
   if (!token) throw new Error('Not signed in')
 
@@ -56,7 +54,7 @@ async function apiFetch<T>(
 
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || res.statusText)
+    throw new Error((data as { error?: string })?.error || (data as { message?: string })?.message || res.statusText)
   }
   return data as T
 }
@@ -113,7 +111,7 @@ export async function saveBusinessStory(getToken: TokenFn, story: BusinessStory)
   return data.story
 }
 
-/** SSE over fetch so we can send Authorization (EventSource cannot). */
+/** SSE over fetch (cookies/session via same-origin + Bearer). */
 export function subscribeWhatsAppEvents(
   getToken: TokenFn,
   onEvent: (payload: Record<string, unknown> & { type?: string }) => void,
@@ -147,15 +145,12 @@ export function subscribeWhatsAppEvents(
           const chunks = buffer.split('\n\n')
           buffer = chunks.pop() || ''
           for (const chunk of chunks) {
-            const line = chunk
-              .split('\n')
-              .find((l) => l.startsWith('data: '))
+            const line = chunk.split('\n').find((l) => l.startsWith('data: '))
             if (!line) continue
             try {
-              const payload = JSON.parse(line.slice(6)) as Record<string, unknown>
-              onEvent(payload)
+              onEvent(JSON.parse(line.slice(6)) as Record<string, unknown>)
             } catch {
-              /* ignore malformed */
+              /* ignore */
             }
           }
         }
