@@ -19,6 +19,7 @@ export async function handleIncomingText({
   text,
   waMessageId,
   sendText,
+  simulateTyping,
 }: {
   organizationId: string
   userId: string
@@ -27,6 +28,7 @@ export async function handleIncomingText({
   text: string
   waMessageId: string | null
   sendText: (jid: string, body: string) => Promise<void>
+  simulateTyping?: (jid: string, ms: number) => Promise<void>
 }) {
   const key = `${userId}:${remoteJid}`
   const existing = pending.get(key)
@@ -38,7 +40,14 @@ export async function handleIncomingText({
     waMessageId,
     timer: setTimeout(() => {
       pending.delete(key)
-      void runReply({ organizationId, userId, remoteJid, job, sendText })
+      void runReply({
+        organizationId,
+        userId,
+        remoteJid,
+        job,
+        sendText,
+        simulateTyping,
+      })
     }, 900),
   }
 
@@ -51,12 +60,14 @@ async function runReply({
   remoteJid,
   job,
   sendText,
+  simulateTyping,
 }: {
   organizationId: string
   userId: string
   remoteJid: string
   job: Omit<PendingJob, 'timer'>
   sendText: (jid: string, body: string) => Promise<void>
+  simulateTyping?: (jid: string, ms: number) => Promise<void>
 }) {
   const merged = job.texts.join('\n').trim()
   if (!merged) return
@@ -130,6 +141,13 @@ async function runReply({
     where: { id: conversation.id },
     data: { preview: replyText.slice(0, 500) },
   })
+
+  const typingMs = Math.min(6500, Math.max(1200, Math.round(replyText.length * 38)))
+  if (simulateTyping) {
+    await simulateTyping(remoteJid, typingMs)
+  } else {
+    await new Promise((r) => setTimeout(r, typingMs))
+  }
 
   await sendText(remoteJid, replyText)
 }

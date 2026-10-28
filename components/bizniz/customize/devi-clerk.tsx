@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import { MessageCircle, Send, Sparkles, X } from 'lucide-react'
+import { sendTrainerMessage } from '@/lib/bizniz/api'
 import { customizeCopy } from '@/lib/bizniz/customize-copy'
-import { useDeviChat } from '@/lib/bizniz/customize-store'
 import type { Lang } from '@/lib/copy'
 import { cn } from '@/lib/utils'
 
@@ -12,24 +13,61 @@ type Props = {
   onFiled: (text: string) => void
 }
 
+type Bubble = { id: string; role: 'user' | 'assistant'; text: string }
+
 export function DeviClerk({ lang, onFiled }: Props) {
   const t = customizeCopy(lang)
+  const { getToken, isSignedIn } = useAuth()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
-  const { messages, send } = useDeviChat(t.deviWelcome)
+  const [busy, setBusy] = useState(false)
+  const [messages, setMessages] = useState<Bubble[]>([
+    { id: 'welcome', role: 'assistant', text: t.deviWelcome },
+  ])
   const endRef = useRef<HTMLDivElement>(null)
+  const tokenFn = useCallback(() => getToken(), [getToken])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, open])
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault()
     const text = draft.trim()
-    if (!text) return
-    onFiled(text)
-    send(text, t.deviAck)
+    if (!text || busy) return
     setDraft('')
+    onFiled(text)
+    const history = messages.map((m) => ({
+      role: m.role,
+      content: m.text,
+    }))
+    setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', text }])
+    setBusy(true)
+    try {
+      if (!isSignedIn) throw new Error('Sign in required')
+      const res = await sendTrainerMessage(tokenFn, text, history)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          text: res.saved
+            ? `${res.reply}\n\n✓ تم حفظ بيانات التدريب في قصة البيزنز.`
+            : res.reply,
+        },
+      ])
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `e-${Date.now()}`,
+          role: 'assistant',
+          text: (err as Error).message || t.deviAck,
+        },
+      ])
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -37,7 +75,7 @@ export function DeviClerk({ lang, onFiled }: Props) {
       {open ? (
         <div className="bz-devi__panel">
           <div className="bz-devi__head">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex min-w-0 items-center gap-2.5">
               <span className="bz-devi__avatar">
                 <Sparkles size={14} />
               </span>
@@ -61,24 +99,37 @@ export function DeviClerk({ lang, onFiled }: Props) {
               <div
                 key={m.id}
                 className={cn(
-                  'bz-devi__bubble',
+                  'bz-devi__bubble whitespace-pre-wrap',
                   m.role === 'user' ? 'bz-devi__bubble--user' : 'bz-devi__bubble--devi',
                 )}
               >
                 {m.text}
               </div>
             ))}
+            {busy ? (
+              <div className="bz-devi__bubble bz-devi__bubble--devi bz-devi__typing">
+                <span />
+                <span />
+                <span />
+              </div>
+            ) : null}
             <div ref={endRef} />
           </div>
 
-          <form className="bz-devi__composer" onSubmit={submit}>
+          <form className="bz-devi__composer" onSubmit={(e) => void submit(e)}>
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={t.deviPlaceholder}
               aria-label={t.deviPlaceholder}
+              disabled={busy}
             />
-            <button type="submit" className="bz-btn bz-btn--primary bz-btn--glow" aria-label={t.deviSend}>
+            <button
+              type="submit"
+              className="bz-btn bz-btn--primary bz-btn--glow"
+              aria-label={t.deviSend}
+              disabled={busy}
+            >
               <Send size={14} />
             </button>
           </form>

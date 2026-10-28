@@ -111,6 +111,48 @@ export async function saveBusinessStory(getToken: TokenFn, story: BusinessStory)
   return data.story
 }
 
+export type LiveConversation = {
+  id: string
+  platformId: 'whatsapp' | 'instagram' | 'telegram' | 'messenger'
+  remoteJid: string
+  clientName: string
+  initials: string
+  preview: string
+  updatedAt: string
+  messages: {
+    id: string
+    role: 'customer' | 'ai'
+    senderLabel: string
+    text: string
+    at: string
+  }[]
+}
+
+export async function fetchLiveConversations(getToken: TokenFn, platform = 'whatsapp') {
+  const data = await apiFetch<{ success: boolean; conversations: LiveConversation[] }>(
+    `/api/bizniz/conversations?platform=${encodeURIComponent(platform)}`,
+    getToken,
+  )
+  return data.conversations
+}
+
+export async function sendTrainerMessage(
+  getToken: TokenFn,
+  message: string,
+  history: { role: string; content: string }[],
+) {
+  return apiFetch<{
+    success: boolean
+    reply: string
+    story: BusinessStory
+    saved: boolean
+    userId: string
+  }>('/api/bizniz/trainer/chat', getToken, {
+    method: 'POST',
+    body: JSON.stringify({ message, history }),
+  })
+}
+
 /** SSE over fetch (cookies/session via same-origin + Bearer). */
 export function subscribeWhatsAppEvents(
   getToken: TokenFn,

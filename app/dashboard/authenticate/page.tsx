@@ -67,7 +67,9 @@ export default function AuthenticatePage() {
       ) : null}
 
       <MotionIn delay={60} className="mb-3">
-        <WhatsAppSessionCard />
+        <div className="bz-card bz-glass">
+          <WhatsAppSessionCard professional />
+        </div>
       </MotionIn>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2">

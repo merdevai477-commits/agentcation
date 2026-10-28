@@ -221,6 +221,23 @@ export async function startSession(userId: string, organizationId: string) {
             if (!rt.sock) return
             await rt.sock.sendMessage(jid, { text: body })
           },
+          simulateTyping: async (jid, ms) => {
+            if (!rt.sock) {
+              await new Promise((r) => setTimeout(r, ms))
+              return
+            }
+            try {
+              await rt.sock.sendPresenceUpdate('composing', jid)
+            } catch {
+              /* ignore */
+            }
+            await new Promise((r) => setTimeout(r, ms))
+            try {
+              await rt.sock.sendPresenceUpdate('paused', jid)
+            } catch {
+              /* ignore */
+            }
+          },
         })
       }
     })

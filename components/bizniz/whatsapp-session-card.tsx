@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { CheckCircle2, Link2Off, Loader2, QrCode, ShieldCheck } from 'lucide-react'
 import {
   clearWhatsApp,
   fetchWhatsAppSession,
@@ -11,32 +12,32 @@ import {
   type WhatsAppSession,
 } from '@/lib/bizniz/api'
 import { PlatformIcon } from '@/components/bizniz/platform-icon'
+import { cn } from '@/lib/utils'
 
 function statusLabel(status: string) {
   switch (status) {
     case 'ready':
-      return 'متصل'
+      return 'مرتبط'
     case 'qr':
       return 'بانتظار المسح'
     case 'connecting':
-      return 'جاري الاتصال…'
+      return 'جاري الربط…'
     case 'logged_out':
-      return 'تم تسجيل الخروج'
+      return 'غير مرتبط'
     case 'stopped':
     default:
-      return 'متوقف'
+      return 'غير مرتبط'
   }
 }
 
-function statusTone(status: string) {
-  if (status === 'ready') return 'text-emerald-300'
-  if (status === 'qr' || status === 'connecting') return 'text-amber-200'
-  if (status === 'logged_out') return 'text-rose-300'
-  return 'text-slate-400'
-}
-
-export function WhatsAppSessionCard({ compact = false }: { compact?: boolean }) {
-  const { getToken, isSignedIn } = useAuth()
+export function WhatsAppSessionCard({
+  compact = false,
+  professional = false,
+}: {
+  compact?: boolean
+  professional?: boolean
+}) {
+  const { getToken, isSignedIn, userId } = useAuth()
   const [session, setSession] = useState<WhatsAppSession | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -45,6 +46,7 @@ export function WhatsAppSessionCard({ compact = false }: { compact?: boolean }) 
 
   const applySession = useCallback((next: Partial<WhatsAppSession> & { status?: string }) => {
     setSession((prev) => ({
+      userId: (next.userId as string | undefined) || prev?.userId,
       status: next.status || prev?.status || 'stopped',
       phoneE164: next.phoneE164 !== undefined ? (next.phoneE164 as string | null) : prev?.phoneE164 ?? null,
       displayName:
@@ -70,10 +72,7 @@ export function WhatsAppSessionCard({ compact = false }: { compact?: boolean }) 
 
     const unsub = subscribeWhatsAppEvents(tokenFn, (ev) => {
       if (ev.type === 'qr') {
-        applySession({
-          status: 'qr',
-          qrDataUrl: (ev.qrDataUrl as string) || null,
-        })
+        applySession({ status: 'qr', qrDataUrl: (ev.qrDataUrl as string) || null })
         return
       }
       if (ev.type === 'ready') {
@@ -105,8 +104,7 @@ export function WhatsAppSessionCard({ compact = false }: { compact?: boolean }) 
     setError('')
     try {
       const fn = action === 'start' ? startWhatsApp : action === 'stop' ? stopWhatsApp : clearWhatsApp
-      const s = await fn(tokenFn)
-      setSession(s)
+      setSession(await fn(tokenFn))
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -115,82 +113,106 @@ export function WhatsAppSessionCard({ compact = false }: { compact?: boolean }) 
   }
 
   const status = session?.status || 'stopped'
-  const connected = status === 'ready'
+  const linked = status === 'ready'
+  const shell = professional || compact
 
   return (
-    <article className={compact ? 'space-y-3' : 'bz-card bz-glass'}>
-      {!compact ? (
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="bz-platform-card__icon">
-              <PlatformIcon id="whatsapp" size={22} />
-            </span>
-            <div>
-              <h2 className="font-medium text-white">WhatsApp</h2>
-              <p className={`mt-0.5 text-xs ${statusTone(status)}`}>{statusLabel(status)}</p>
-              {connected ? (
-                <p className="mt-1 text-xs text-slate-400">
-                  {[session?.displayName, session?.phoneE164].filter(Boolean).join(' · ') || 'Connected'}
-                </p>
-              ) : (
-                <p className="mt-1 text-xs text-slate-500">امسح QR من واتساب على الموبايل (أجهزة مرتبطة)</p>
-              )}
-            </div>
+    <article className={cn(!shell && 'bz-card bz-glass', shell && 'bz-wa-pro')}>
+      <div className="bz-wa-pro__hero">
+        <div className="bz-wa-pro__brand">
+          <span className="bz-wa-pro__icon">
+            <PlatformIcon id="whatsapp" size={26} />
+          </span>
+          <div>
+            <p className="bz-wa-pro__eyebrow">جلسة واتساب حقيقية</p>
+            <h3 className="bz-wa-pro__title">WhatsApp Business Link</h3>
           </div>
         </div>
-      ) : (
-        <div>
-          <p className={`text-sm ${statusTone(status)}`}>{statusLabel(status)}</p>
-          {connected ? (
-            <p className="mt-1 text-xs text-slate-400">
-              {[session?.displayName, session?.phoneE164].filter(Boolean).join(' · ') || 'Connected'}
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-slate-500">امسح QR من واتساب على الموبايل (أجهزة مرتبطة)</p>
-          )}
+        <span className={cn('bz-wa-pro__badge', linked ? 'is-on' : 'is-off')}>
+          {linked ? <CheckCircle2 size={14} /> : <Link2Off size={14} />}
+          {statusLabel(status)}
+        </span>
+      </div>
+
+      <div className="bz-wa-pro__grid">
+        <div className="bz-wa-pro__tile">
+          <span>حساب Clerk</span>
+          <strong className="truncate">{userId || session?.userId || '—'}</strong>
         </div>
-      )}
+        <div className="bz-wa-pro__tile">
+          <span>رقم واتساب</span>
+          <strong>{linked ? session?.phoneE164 || '—' : 'غير مرتبط'}</strong>
+        </div>
+        <div className="bz-wa-pro__tile">
+          <span>اسم العرض</span>
+          <strong>{linked ? session?.displayName || '—' : '—'}</strong>
+        </div>
+        <div className="bz-wa-pro__tile">
+          <span>الحالة</span>
+          <strong className={linked ? 'text-emerald-300' : 'text-slate-300'}>{statusLabel(status)}</strong>
+        </div>
+      </div>
 
       {status === 'qr' && session?.qrDataUrl ? (
-        <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-black/30 p-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={session.qrDataUrl} alt="WhatsApp QR" className="h-56 w-56 rounded-lg bg-white p-2" />
-          <p className="text-center text-xs text-slate-400">افتح واتساب ← الأجهزة المرتبطة ← ربط جهاز</p>
+        <div className="bz-wa-pro__qr">
+          <div className="bz-wa-pro__qr-frame">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={session.qrDataUrl} alt="WhatsApp QR" />
+          </div>
+          <div>
+            <p className="flex items-center gap-1.5 text-sm font-medium text-white">
+              <QrCode size={16} /> امسح من الموبايل
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+              واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز. الجلسة مربوطة بـ user id بتاعك فقط.
+            </p>
+          </div>
         </div>
       ) : null}
 
+      {linked ? (
+        <p className="bz-wa-pro__ok">
+          <ShieldCheck size={14} /> الرقم ده مربوط بحسابك — الرسائل الواردة هترد تلقائي حسب قصة البيزنز.
+        </p>
+      ) : (
+        <p className="bz-wa-pro__hint">
+          اضغط تشغيل واظهر QR، بعد المسح هيظهر الرقم والاسم هنا كـ «مرتبط».
+        </p>
+      )}
+
       {error || session?.lastError ? (
-        <p className="mt-3 rounded-lg border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
+        <p className="rounded-xl border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
           {error || session?.lastError}
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="bz-wa-pro__actions">
         <button
           type="button"
           className="bz-btn bz-btn--primary bz-btn--glow"
           disabled={!!busy || status === 'ready' || status === 'connecting'}
           onClick={() => void run('start')}
         >
-          {busy === 'start' ? '…' : 'تشغيل'}
+          {busy === 'start' ? <Loader2 size={14} className="animate-spin" /> : null}
+          {busy === 'start' ? 'جاري التشغيل…' : 'تشغيل'}
         </button>
         <button
           type="button"
           className="bz-btn bz-btn--ghost"
-          disabled={!!busy || status === 'stopped'}
+          disabled={!!busy || status === 'stopped' || status === 'logged_out'}
           onClick={() => void run('stop')}
         >
-          {busy === 'stop' ? '…' : 'إيقاف'}
+          إيقاف
         </button>
         <button
           type="button"
           className="bz-btn bz-btn--danger"
           disabled={!!busy}
           onClick={() => {
-            if (window.confirm('مسح الجلسة وتسجيل الخروج من واتساب؟')) void run('clear')
+            if (window.confirm('مسح الجلسة وفك ارتباط واتساب من حسابك؟')) void run('clear')
           }}
         >
-          {busy === 'clear' ? '…' : 'مسح'}
+          مسح الارتباط
         </button>
       </div>
     </article>

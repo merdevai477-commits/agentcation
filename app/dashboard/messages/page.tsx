@@ -1,8 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useAuth } from '@clerk/nextjs'
 import { DEMO_CONVERSATIONS } from '@/lib/bizniz/demo-data'
+import { fetchLiveConversations, type LiveConversation } from '@/lib/bizniz/api'
 import { platformLabel } from '@/lib/bizniz/platforms'
 import { relativeTime } from '@/lib/bizniz/store'
 import type { PlatformId } from '@/lib/bizniz/types'
@@ -10,13 +12,55 @@ import { BiznizTopbar } from '@/components/bizniz/shell/topbar'
 import { MotionIn } from '@/components/bizniz/motion-in'
 import { PlatformIcon } from '@/components/bizniz/platform-icon'
 import { cn } from '@/lib/utils'
-import { Suspense } from 'react'
+
+type Thread = {
+  id: string
+  platformId: PlatformId
+  clientName: string
+  initials: string
+  preview: string
+  updatedAt: string
+  live: boolean
+  messages: { id: string; role: 'customer' | 'ai'; senderLabel: string; text: string; at: string }[]
+}
+
+function toThread(c: LiveConversation): Thread {
+  return {
+    id: c.id,
+    platformId: c.platformId,
+    clientName: c.clientName,
+    initials: c.initials,
+    preview: c.preview,
+    updatedAt: c.updatedAt,
+    live: true,
+    messages: c.messages,
+  }
+}
+
+function demoThreads(): Thread[] {
+  return DEMO_CONVERSATIONS.map((c) => ({
+    id: c.id,
+    platformId: c.platformId,
+    clientName: c.clientName,
+    initials: c.initials,
+    preview: c.preview,
+    updatedAt: c.updatedAt,
+    live: false,
+    messages: c.messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      senderLabel: m.role === 'customer' ? c.clientName : 'AI Agent',
+      text: m.text,
+      at: m.at,
+    })),
+  }))
+}
 
 function MessagesInner() {
   const params = useSearchParams()
+  const { getToken, isSignedIn } = useAuth()
   const initialPlatform = (params.get('platform') as PlatformId | null) || 'all'
   const initialConv = params.get('c')
-  const clientFilter = params.get('client')
 
   const [platform, setPlatform] = useState<'all' | PlatformId>(
     initialPlatform === 'whatsapp' ||
@@ -27,19 +71,63 @@ function MessagesInner() {
       : 'all',
   )
   const [q, setQ] = useState('')
-  const [selectedId, setSelectedId] = useState(
-    initialConv || DEMO_CONVERSATIONS[0]?.id || '',
-  )
+  const [live, setLive] = useState<Thread[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedId] = useState(initialConv || '')
+  const [mobileShowThread, setMobileShowThread] = useState(Boolean(initialConv))
+
+  const tokenFn = useCallback(() => getToken(), [getToken])
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await fetchLiveConversations(tokenFn, 'whatsapp')
+        if (!cancelled) setLive(rows.map(toThread))
+      } catch {
+        if (!cancelled) setLive([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    const t = setInterval(() => {
+      void fetchLiveConversations(tokenFn, 'whatsapp')
+        .then((rows) => setLive(rows.map(toThread)))
+        .catch(() => undefined)
+    }, 12000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [isSignedIn, tokenFn])
 
   const list = useMemo(() => {
-    return DEMO_CONVERSATIONS.filter((c) => {
+    const base =
+      platform === 'whatsapp' || platform === 'all'
+        ? [...live, ...(live.length === 0 ? demoThreads().filter((d) => d.platformId === 'whatsapp') : [])]
+        : demoThreads().filter((d) => d.platformId === platform)
+
+    const merged =
+      platform === 'all'
+        ? [
+            ...live,
+            ...demoThreads().filter(
+              (d) => d.platformId !== 'whatsapp' || live.length === 0,
+            ),
+          ]
+        : base
+
+    return merged.filter((c) => {
       if (platform !== 'all' && c.platformId !== platform) return false
-      if (clientFilter && c.clientId !== clientFilter) return false
       if (!q.trim()) return true
       const hay = `${c.clientName} ${c.preview} ${c.messages.map((m) => m.text).join(' ')}`.toLowerCase()
       return hay.includes(q.toLowerCase())
     })
-  }, [platform, q, clientFilter])
+  }, [platform, q, live])
 
   const selected = list.find((c) => c.id === selectedId) || list[0]
 
@@ -48,9 +136,16 @@ function MessagesInner() {
       <MotionIn>
         <BiznizTopbar
           title="Messages"
-          subtitle="Inspect customer ↔ AI conversations across channels."
+          subtitle="محادثات واتساب الحقيقية + القنوات التجريبية الأخرى."
           showNewAutomation={false}
         />
+      </MotionIn>
+
+      <MotionIn delay={40} className="mb-3">
+        <p className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100/90">
+          واتساب = بيانات حقيقية (من / إلى: اسم المرسل + AI Agent). باقي القنوات demo للعرض.
+          {loading ? ' جاري التحميل…' : live.length ? ` · ${live.length} محادثة حية` : ' · لا محادثات واتساب بعد'}
+        </p>
       </MotionIn>
 
       <MotionIn delay={50} className="mb-4 flex flex-wrap gap-1.5">
@@ -66,11 +161,11 @@ function MessagesInner() {
         ))}
       </MotionIn>
 
-      <MotionIn delay={90} className="bz-inbox">
+      <MotionIn delay={90} className={cn('bz-inbox', mobileShowThread && 'is-thread')}>
         <div className="bz-inbox__list bz-glass">
           <input
             className="bz-inbox__search"
-            placeholder="Search name or message…"
+            placeholder="ابحث بالاسم أو الرسالة…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -80,13 +175,25 @@ function MessagesInner() {
                 <button
                   type="button"
                   className={cn('bz-msg-row w-full', selected?.id === c.id && 'bg-white/[0.04]')}
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => {
+                    setSelectedId(c.id)
+                    setMobileShowThread(true)
+                  }}
                 >
                   <span className="bz-avatar bz-avatar--sm">{c.initials}</span>
                   <div className="min-w-0 flex-1 text-start">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-sm text-white">{c.clientName}</span>
                       <PlatformIcon id={c.platformId} size={12} />
+                      {c.live ? (
+                        <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] text-emerald-300">
+                          live
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] text-slate-500">
+                          demo
+                        </span>
+                      )}
                     </div>
                     <p className="truncate text-xs text-slate-500">{c.preview}</p>
                   </div>
@@ -95,7 +202,7 @@ function MessagesInner() {
               </li>
             ))}
             {list.length === 0 ? (
-              <li className="px-3 py-10 text-center text-sm text-slate-500">No conversations found.</li>
+              <li className="px-3 py-10 text-center text-sm text-slate-500">لا محادثات.</li>
             ) : null}
           </ul>
         </div>
@@ -104,12 +211,20 @@ function MessagesInner() {
           {selected ? (
             <>
               <div className="flex items-center gap-2 border-b border-white/8 px-4 py-3">
+                <button
+                  type="button"
+                  className="bz-inbox__back"
+                  onClick={() => setMobileShowThread(false)}
+                >
+                  رجوع
+                </button>
                 <span className="bz-avatar">{selected.initials}</span>
-                <div>
-                  <p className="font-medium text-white">{selected.clientName}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-white">{selected.clientName}</p>
                   <p className="flex items-center gap-1 text-xs text-slate-500">
                     <PlatformIcon id={selected.platformId} size={12} />
                     {platformLabel(selected.platformId)}
+                    {selected.live ? ' · حقيقي' : ' · demo'}
                   </p>
                 </div>
               </div>
@@ -123,18 +238,23 @@ function MessagesInner() {
                     )}
                     style={{ animationDelay: `${i * 45}ms` }}
                   >
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-wide opacity-70">
+                      {m.senderLabel}
+                    </p>
                     <p>{m.text}</p>
                     <p className="mt-1 text-[10px] opacity-60">{relativeTime(m.at)}</p>
                   </div>
                 ))}
               </div>
               <p className="border-t border-white/8 px-4 py-3 text-[11px] text-slate-500">
-                Reply sending is not connected — demo read-only thread.
+                {selected.live
+                  ? 'الرد التلقائي من الوكيل يعمل على واتساب مع محاكاة كتابة بشرية قبل الإرسال.'
+                  : 'محادثة تجريبية — واتساب الحقيقي يظهر بعد ما توصل رسائل للرقم المرتبط.'}
               </p>
             </>
           ) : (
             <div className="grid flex-1 place-items-center text-sm text-slate-500">
-              Select a conversation
+              اختر محادثة
             </div>
           )}
         </div>

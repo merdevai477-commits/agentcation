@@ -4,7 +4,16 @@ import { DEFAULT_STORY } from '../../lib/org.js'
 
 const pending = new Map()
 
-export async function handleIncomingText({ organizationId, userId, remoteJid, contactName, text, waMessageId, sendText }) {
+export async function handleIncomingText({
+  organizationId,
+  userId,
+  remoteJid,
+  contactName,
+  text,
+  waMessageId,
+  sendText,
+  simulateTyping,
+}) {
   const key = `${userId || organizationId}:${remoteJid}`
   const existing = pending.get(key)
   if (existing) clearTimeout(existing.timer)
@@ -17,13 +26,13 @@ export async function handleIncomingText({ organizationId, userId, remoteJid, co
 
   job.timer = setTimeout(() => {
     pending.delete(key)
-    void runReply({ organizationId, remoteJid, job, sendText })
+    void runReply({ organizationId, userId, remoteJid, job, sendText, simulateTyping })
   }, 900)
 
   pending.set(key, job)
 }
 
-async function runReply({ organizationId, remoteJid, job, sendText }) {
+async function runReply({ organizationId, userId, remoteJid, job, sendText, simulateTyping }) {
   const merged = job.texts.join('\n').trim()
   if (!merged) return
 
@@ -96,6 +105,13 @@ async function runReply({ organizationId, remoteJid, job, sendText }) {
     where: { id: conversation.id },
     data: { preview: replyText.slice(0, 500) },
   })
+
+  const typingMs = Math.min(6500, Math.max(1200, Math.round(replyText.length * 38)))
+  if (typeof simulateTyping === 'function') {
+    await simulateTyping(remoteJid, typingMs)
+  } else {
+    await new Promise((r) => setTimeout(r, typingMs))
+  }
 
   await sendText(remoteJid, replyText)
 }

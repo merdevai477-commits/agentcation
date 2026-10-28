@@ -26,15 +26,17 @@ export function AppDetailModal({ app, onClose, onPause, onResume, onDisconnect }
   return (
     <div className="bz-modal-root" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
       <button type="button" className="bz-modal-backdrop" aria-label="Close" onClick={onClose} />
-      <div className={`bz-modal ${isWhatsApp ? 'bz-modal--wide' : ''}`}>
+      <div className={`bz-modal ${isWhatsApp ? 'bz-modal--pro' : ''}`}>
         <div className="bz-modal__head">
           <div className="flex items-center gap-3">
             <PlatformIcon id={app.platformId} size={22} />
             <div>
-              <h2 id="app-modal-title" className="text-lg font-semibold text-white">
+              <h2 id="app-modal-title" className="text-lg font-semibold tracking-tight text-white">
                 {platformLabel(app.platformId)}
               </h2>
-              {!isWhatsApp ? <StatusDot status={app.status} /> : null}
+              {!isWhatsApp ? <StatusDot status={app.status} /> : (
+                <p className="text-[11px] text-slate-500">ربط حي · جلسة لكل مستخدم</p>
+              )}
             </div>
           </div>
           <button type="button" className="bz-icon-btn" onClick={onClose} aria-label="Close">
@@ -43,25 +45,18 @@ export function AppDetailModal({ app, onClose, onPause, onResume, onDisconnect }
         </div>
 
         {isWhatsApp ? (
-          <div className="bz-modal__body space-y-3">
-            <p className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100/90">
-              جلسة واتساب حقيقية (QR زي واتساب ويب). اضغط تشغيل وامسح من الموبايل.
-            </p>
-            <WhatsAppSessionCard compact />
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Link
-                href="/dashboard/authenticate"
-                className="bz-btn bz-btn--ghost"
-                onClick={onClose}
-              >
-                فتح صفحة Authenticate
+          <div className="bz-modal__body space-y-4 pb-4">
+            <WhatsAppSessionCard professional />
+            <div className="flex flex-wrap gap-2">
+              <Link href="/dashboard/authenticate" className="bz-btn bz-btn--ghost" onClick={onClose}>
+                صفحة الربط الكاملة
               </Link>
               <Link
                 href="/dashboard/messages?platform=whatsapp"
                 className="bz-btn bz-btn--ghost"
                 onClick={onClose}
               >
-                <Eye size={14} /> View Messages
+                <Eye size={14} /> الرسائل الحقيقية
               </Link>
             </div>
           </div>
@@ -82,9 +77,8 @@ export function AppDetailModal({ app, onClose, onPause, onResume, onDisconnect }
                 }
               />
               <Row label="Account" value={app.accountLabel || 'Not connected'} />
-              <p className="rounded-lg border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-xs text-violet-100/90">
-                Demo connection state only. Real Instagram / Telegram / Messenger connectors are not
-                wired yet — WhatsApp uses a live Baileys session from Authenticate.
+              <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400">
+                القنوات دي لسه demo. واتساب فقط مربوط بجلسة حقيقية لكل user id.
               </p>
             </div>
 
