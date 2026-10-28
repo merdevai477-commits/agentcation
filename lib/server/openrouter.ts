@@ -3,13 +3,13 @@ type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 export async function chatCompletion({
   messages,
   temperature = 0.35,
-  maxTokens = 400,
+  maxTokens = 800,
 }: {
   messages: ChatMessage[]
   temperature?: number
   maxTokens?: number
 }) {
-  const apiKey = process.env.OPENROUTER_API_KEY
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim()
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured')
 
   const base = (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '')
@@ -28,21 +28,31 @@ export async function chatCompletion({
       messages,
       temperature,
       max_tokens: maxTokens,
+      // Qwen3.7 Flash reasons by default and can burn max_tokens before content
+      reasoning: { effort: 'none' },
     }),
   })
 
   const data = (await res.json().catch(() => ({}))) as {
     error?: { message?: string }
     message?: string
-    choices?: { message?: { content?: string } }[]
+    choices?: {
+      message?: {
+        content?: string | null
+        reasoning?: string | null
+      }
+    }[]
   }
   if (!res.ok) {
     throw new Error(`OpenRouter error: ${data?.error?.message || data?.message || res.statusText}`)
   }
 
-  const text = data?.choices?.[0]?.message?.content
-  if (!text || typeof text !== 'string') throw new Error('OpenRouter returned an empty reply')
-  return text.trim()
+  const msg = data?.choices?.[0]?.message
+  const text = (msg?.content || msg?.reasoning || '').trim()
+  if (!text) {
+    throw new Error('OpenRouter returned an empty reply (no content/reasoning)')
+  }
+  return text
 }
 
 export function buildSystemPrompt(story: Record<string, unknown> | null | undefined) {

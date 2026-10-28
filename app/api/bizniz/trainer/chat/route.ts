@@ -149,19 +149,27 @@ export async function POST(req: Request) {
         maxTokens: 800,
       })
     } catch (err) {
-      console.error('[trainer]', (err as Error).message)
+      const detail = (err as Error).message || 'unknown error'
+      console.error('[trainer]', detail)
       const first = owner.name.split(' ')[0] || owner.name
+      const missingKey = /OPENROUTER_API_KEY is not configured/i.test(detail)
       return Response.json({
         success: true,
-        reply: /[A-Za-z]/.test(message) && !/[\u0600-\u06FF]/.test(message)
-          ? `Got it, ${first}. OpenRouter is not configured right now — save your story from Authenticate for the moment.`
-          : `وصلت يا ${first}. مفيش OpenRouter شغال دلوقتي — احفظ قصة البيزنز من Authenticate مؤقتاً.`,
+        reply: missingKey
+          ? /[A-Za-z]/.test(message) && !/[\u0600-\u06FF]/.test(message)
+            ? `Got it, ${first}. OPENROUTER_API_KEY is missing on the server — add it in Railway Variables.`
+            : `وصلت يا ${first}. مفيش OPENROUTER_API_KEY على السيرفر — ضيفه في Variables.`
+          : /[A-Za-z]/.test(message) && !/[\u0600-\u06FF]/.test(message)
+            ? `Sorry ${first}, the model call failed: ${detail}`
+            : `آسف يا ${first}، استدعاء الموديل فشل: ${detail}`,
         story: current,
         saved: false,
         userId,
         ownerName: owner.name,
+        error: detail,
       })
     }
+
 
     let reply = raw
     let patch: Partial<Story> = {}

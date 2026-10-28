@@ -1,6 +1,6 @@
 import { env } from '../../config/env.js'
 
-export async function chatCompletion({ messages, temperature = 0.35, maxTokens = 400 }) {
+export async function chatCompletion({ messages, temperature = 0.35, maxTokens = 800 }) {
   if (!env.openRouterApiKey) {
     throw new Error('OPENROUTER_API_KEY is not configured')
   }
@@ -18,6 +18,7 @@ export async function chatCompletion({ messages, temperature = 0.35, maxTokens =
       messages,
       temperature,
       max_tokens: maxTokens,
+      reasoning: { effort: 'none' },
     }),
   })
 
@@ -27,11 +28,12 @@ export async function chatCompletion({ messages, temperature = 0.35, maxTokens =
     throw new Error(`OpenRouter error: ${detail}`)
   }
 
-  const text = data?.choices?.[0]?.message?.content
-  if (!text || typeof text !== 'string') {
-    throw new Error('OpenRouter returned an empty reply')
+  const msg = data?.choices?.[0]?.message
+  const text = (msg?.content || msg?.reasoning || '').trim()
+  if (!text) {
+    throw new Error('OpenRouter returned an empty reply (no content/reasoning)')
   }
-  return text.trim()
+  return text
 }
 
 export function buildSystemPrompt(story) {
@@ -48,12 +50,15 @@ export function buildSystemPrompt(story) {
     'رد باختصار ووضوح باللهجة المطلوبة، بدون مقدمات طويلة.',
     'لو مش متأكد، اسأل سؤال واحد قصير بدل ما تخمّن.',
     '',
+    `اسم صاحب الحساب: ${s.ownerName || 'غير محدد'}`,
     `اسم النشاط: ${s.businessName || 'غير محدد'}`,
-    `اللهجة: ${s.dialect || 'egyptian_colloquial'}`,
+    `لغة الرد مع العملاء: ${s.replyLanguage || s.dialect || 'egyptian_colloquial'}`,
+    `اللهجة/الأسلوب: ${s.dialect || 'egyptian_colloquial'}`,
     `النبرة: ${s.tone || 'friendly_support'}`,
     `الخدمات: ${services || 'غير محددة'}`,
     `ساعات العمل: ${s.hours || 'غير محددة'}`,
     `ملاحظات الأسعار: ${s.pricingNotes || 'غير محددة'}`,
+    'Mirror the customer language when possible (Arabic dialect / English) unless Business Story forces a dialect.',
     faqs ? `أسئلة شائعة:\n${faqs}` : '',
     doNot ? `ممنوع:\n${doNot}` : '',
     samples ? `أمثلة ردود:\n${samples}` : '',
