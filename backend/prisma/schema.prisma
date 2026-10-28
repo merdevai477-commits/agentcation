@@ -4,6 +4,8 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Root app + backend both resolve via @prisma/client → .prisma/client
+  output   = "../../node_modules/.prisma/client"
 }
 
 datasource db {
