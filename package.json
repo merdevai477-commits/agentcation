@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate --schema=backend/prisma/schema.prisma && next build",
-    "start": "prisma migrate deploy --schema=backend/prisma/schema.prisma && next start",
+    "start": "node scripts/start.mjs",
     "postinstall": "prisma generate --schema=backend/prisma/schema.prisma"
   },
   "prisma": {
