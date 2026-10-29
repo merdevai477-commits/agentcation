@@ -17,9 +17,9 @@ type Bubble = { id: string; role: 'user' | 'assistant'; text: string }
 
 function welcomeFor(lang: Lang, firstName: string) {
   if (lang === 'ar') {
-    return `أهلاً يا ${firstName} — أنا ديفي. عارف إنك صاحب الحساب. كلّمني عربي فصحى أو عامية أو English؛ هرد بنفس لغتك، وأحفظ اسم البيزنز والنبرة والخدمات عشان واتساب يرد بطريقتك.`
+    return `أهلاً يا ${firstName} — أنا ديفي. الصق برومبت خدمة العملاء كامل في أي وقت وهحفظه حرفيًا لردود واتساب. الملاحظات القصيرة (الاسم، النبرة، FAQ) برضه تشتغل — وهرد بنفس لغتك.`
   }
-  return `Hi ${firstName} — I’m Devi. I know you’re the account owner. Write in English, Arabic, or dialect; I’ll mirror your language, learn what you want, and save it so WhatsApp replies in your style.`
+  return `Hi ${firstName} — I’m Devi. Paste a full customer-service prompt anytime and I’ll save it wholesale for WhatsApp. Short notes (name, tone, FAQs) work too — I’ll mirror your language.`
 }
 
 export function DeviClerk({ lang, onFiled }: Props) {

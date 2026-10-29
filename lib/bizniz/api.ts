@@ -31,6 +31,10 @@ export type BusinessStory = {
   faqs: { q: string; a: string }[]
   doNot: string[]
   sampleReplies: string[]
+  ownerName?: string
+  replyLanguage?: string
+  /** Full freeform WhatsApp agent prompt */
+  agentPrompt?: string
 }
 
 export const EMPTY_STORY: BusinessStory = {
@@ -43,6 +47,7 @@ export const EMPTY_STORY: BusinessStory = {
   faqs: [],
   doNot: [],
   sampleReplies: [],
+  agentPrompt: '',
 }
 
 type TokenFn = () => Promise<string | null>

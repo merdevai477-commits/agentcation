@@ -38,6 +38,7 @@ export async function chatCompletion({ messages, temperature = 0.35, maxTokens =
 
 export function buildSystemPrompt(story) {
   const s = story && typeof story === 'object' ? story : {}
+  const agentPrompt = String(s.agentPrompt || '').trim()
   const faqs = Array.isArray(s.faqs)
     ? s.faqs.map((f) => `- س: ${f.q}\n  ج: ${f.a}`).join('\n')
     : ''
@@ -45,11 +46,7 @@ export function buildSystemPrompt(story) {
   const doNot = Array.isArray(s.doNot) ? s.doNot.map((x) => `- ${x}`).join('\n') : ''
   const samples = Array.isArray(s.sampleReplies) ? s.sampleReplies.map((x) => `- ${x}`).join('\n') : ''
 
-  return [
-    'أنت موظف خدمة عملاء على واتساب لنشاط تجاري.',
-    'رد باختصار ووضوح باللهجة المطلوبة، بدون مقدمات طويلة.',
-    'لو مش متأكد، اسأل سؤال واحد قصير بدل ما تخمّن.',
-    '',
+  const structured = [
     `اسم صاحب الحساب: ${s.ownerName || 'غير محدد'}`,
     `اسم النشاط: ${s.businessName || 'غير محدد'}`,
     `لغة الرد مع العملاء: ${s.replyLanguage || s.dialect || 'egyptian_colloquial'}`,
@@ -58,10 +55,35 @@ export function buildSystemPrompt(story) {
     `الخدمات: ${services || 'غير محددة'}`,
     `ساعات العمل: ${s.hours || 'غير محددة'}`,
     `ملاحظات الأسعار: ${s.pricingNotes || 'غير محددة'}`,
-    'Mirror the customer language when possible (Arabic dialect / English) unless Business Story forces a dialect.',
     faqs ? `أسئلة شائعة:\n${faqs}` : '',
     doNot ? `ممنوع:\n${doNot}` : '',
     samples ? `أمثلة ردود:\n${samples}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  if (agentPrompt) {
+    return [
+      'أنت وكيل خدمة عملاء على واتساب. التزم حرفيًا بالتعليمات التالية عن البيزنس والهوية والردود.',
+      'لا تخترع نشاطًا أو منتجًا مختلفًا عما في التعليمات.',
+      'Mirror the customer language (Arabic dialect / English) when appropriate.',
+      '',
+      '===== تعليمات البيزنس (ملزمة) =====',
+      agentPrompt,
+      '',
+      '===== حقول إضافية من لوحة التحكم =====',
+      structured,
+    ].join('\n')
+  }
+
+  return [
+    'أنت موظف خدمة عملاء على واتساب لنشاط تجاري.',
+    'رد باختصار ووضوح باللهجة المطلوبة، بدون مقدمات طويلة.',
+    'لو مش متأكد، اسأل سؤال واحد قصير بدل ما تخمّن.',
+    'لا تخترع هوية أو منتج غير موجود في البيانات أدناه.',
+    '',
+    structured,
+    'Mirror the customer language when possible (Arabic dialect / English) unless Business Story forces a dialect.',
   ]
     .filter(Boolean)
     .join('\n')

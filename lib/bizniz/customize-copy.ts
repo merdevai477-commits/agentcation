@@ -42,7 +42,7 @@ const en = {
   deviRole: 'Model trainer for your WhatsApp agent',
   deviOpen: 'Open trainer',
   deviClose: 'Close',
-  deviPlaceholder: 'Tell me your business — name, services, tone, prices, FAQs…',
+  deviPlaceholder: 'Paste a full agent prompt, or short notes: name, services, tone, FAQs…',
   deviSend: 'Send',
   deviWelcome:
     'Hi — I’m Devi. I know who you are. Write Arabic or English (or dialect); I’ll reply the same way and train your WhatsApp agent.',
@@ -94,7 +94,7 @@ const ar: Dict = {
   deviRole: 'مدرب الموديل لوكيل واتساب',
   deviOpen: 'فتح المدرب',
   deviClose: 'إغلاق',
-  deviPlaceholder: 'قولي عن البيزنز — الاسم، الخدمات، النبرة، الأسعار، الأسئلة الشائعة…',
+  deviPlaceholder: 'الصق برومبت الوكيل كامل، أو ملاحظات قصيرة: الاسم، الخدمات، النبرة، FAQ…',
   deviSend: 'إرسال',
   deviWelcome:
     'أهلاً — أنا ديفي. عارف مين صاحب الحساب. اكتب عربي أو إنجليزي أو عامية؛ هرد بنفس لغتك وأدرّب وكيل واتساب على طريقتك.',

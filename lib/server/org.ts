@@ -11,6 +11,8 @@ export const DEFAULT_STORY = {
   faqs: [] as { q: string; a: string }[],
   doNot: ['لا تعد بمواعيد غير مؤكدة', 'لا تشارك بيانات داخلية'],
   sampleReplies: [] as string[],
+  /** Freeform WhatsApp agent instructions (full prompt). */
+  agentPrompt: '',
 }
 
 /** Ensure Clerk user exists in DB and has a default organization. Bound to Clerk userId. */

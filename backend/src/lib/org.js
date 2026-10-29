@@ -11,6 +11,7 @@ const DEFAULT_STORY = {
   faqs: [],
   doNot: ['لا تعد بمواعيد غير مؤكدة', 'لا تشارك بيانات داخلية'],
   sampleReplies: [],
+  agentPrompt: '',
 }
 
 /** Ensure Clerk user exists in DB and has a default organization. */

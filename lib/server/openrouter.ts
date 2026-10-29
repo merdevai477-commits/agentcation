@@ -28,7 +28,7 @@ export async function chatCompletion({
       messages,
       temperature,
       max_tokens: maxTokens,
-      // Qwen3.7 Flash reasons by default and can burn max_tokens before content
+      // Flash models may spend tokens on reasoning; disable for reliable content
       reasoning: { effort: 'none' },
     }),
   })
@@ -57,6 +57,7 @@ export async function chatCompletion({
 
 export function buildSystemPrompt(story: Record<string, unknown> | null | undefined) {
   const s = story && typeof story === 'object' ? story : {}
+  const agentPrompt = String(s.agentPrompt || '').trim()
   const faqs = Array.isArray(s.faqs)
     ? (s.faqs as { q?: string; a?: string }[]).map((f) => `- س: ${f.q}\n  ج: ${f.a}`).join('\n')
     : ''
@@ -66,11 +67,7 @@ export function buildSystemPrompt(story: Record<string, unknown> | null | undefi
     ? (s.sampleReplies as string[]).map((x) => `- ${x}`).join('\n')
     : ''
 
-  return [
-    'أنت موظف خدمة عملاء على واتساب لنشاط تجاري.',
-    'رد باختصار ووضوح باللهجة المطلوبة، بدون مقدمات طويلة.',
-    'لو مش متأكد، اسأل سؤال واحد قصير بدل ما تخمّن.',
-    '',
+  const structured = [
     `اسم صاحب الحساب: ${(s.ownerName as string) || 'غير محدد'}`,
     `اسم النشاط: ${(s.businessName as string) || 'غير محدد'}`,
     `لغة الرد مع العملاء: ${(s.replyLanguage as string) || (s.dialect as string) || 'egyptian_colloquial'}`,
@@ -79,10 +76,36 @@ export function buildSystemPrompt(story: Record<string, unknown> | null | undefi
     `الخدمات: ${services || 'غير محددة'}`,
     `ساعات العمل: ${(s.hours as string) || 'غير محددة'}`,
     `ملاحظات الأسعار: ${(s.pricingNotes as string) || 'غير محددة'}`,
-    'Mirror the customer language when possible (Arabic dialect / English) unless Business Story forces a dialect.',
     faqs ? `أسئلة شائعة:\n${faqs}` : '',
     doNot ? `ممنوع:\n${doNot}` : '',
     samples ? `أمثلة ردود:\n${samples}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  // Full owner prompt is the source of truth for WhatsApp identity
+  if (agentPrompt) {
+    return [
+      'أنت وكيل خدمة عملاء على واتساب. التزم حرفيًا بالتعليمات التالية عن البيزنس والهوية والردود.',
+      'لا تخترع نشاطًا أو منتجًا مختلفًا عما في التعليمات.',
+      'Mirror the customer language (Arabic dialect / English) when appropriate.',
+      '',
+      '===== تعليمات البيزنس (ملزمة) =====',
+      agentPrompt,
+      '',
+      '===== حقول إضافية من لوحة التحكم =====',
+      structured,
+    ].join('\n')
+  }
+
+  return [
+    'أنت موظف خدمة عملاء على واتساب لنشاط تجاري.',
+    'رد باختصار ووضوح باللهجة المطلوبة، بدون مقدمات طويلة.',
+    'لو مش متأكد، اسأل سؤال واحد قصير بدل ما تخمّن.',
+    'لا تخترع هوية أو منتج غير موجود في البيانات أدناه.',
+    '',
+    structured,
+    'Mirror the customer language when possible (Arabic dialect / English) unless Business Story forces a dialect.',
   ]
     .filter(Boolean)
     .join('\n')

@@ -88,11 +88,24 @@ export function BusinessStoryForm() {
   return (
     <form onSubmit={(e) => void onSave(e)} className="bz-card bz-glass space-y-4">
       <div>
-        <h2 className="font-medium text-white">قصة البيزنز (JSON context)</h2>
+        <h2 className="font-medium text-white">قصة البيزنز + برومبت الوكيل</h2>
         <p className="mt-1 text-xs text-slate-400">
-          الموديل بيستخدم البيانات دي قبل كل رد عشان يكون أدق وأسرع.
+          أي برومبت طويل تلصقه هنا أو في Devi بيتخزن كامل ويبقا ملزم لردود واتساب.
         </p>
       </div>
+
+      <label className="block space-y-1.5">
+        <span className="text-xs text-slate-400">برومبت الوكيل (تعليمات كاملة — أولوية على باقي الحقول)</span>
+        <textarea
+          className="bz-input min-h-40 w-full font-mono text-[11px] leading-relaxed"
+          value={story.agentPrompt || ''}
+          onChange={(e) => setStory({ ...story, agentPrompt: e.target.value })}
+          placeholder="الصق هنا نظام خدمة العملاء / هوية البيزنس كامل…"
+        />
+        <span className="text-[10px] text-slate-500">
+          {(story.agentPrompt || '').length.toLocaleString()} حرف محفوظة
+        </span>
+      </label>
 
       <label className="block space-y-1.5">
         <span className="text-xs text-slate-400">اسم النشاط</span>

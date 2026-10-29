@@ -122,8 +122,11 @@ async function runReply({
 
   let replyText: string
   try {
+    const hasLongPrompt = String((story as { agentPrompt?: string }).agentPrompt || '').length > 500
     replyText = await chatCompletion({
       messages: [{ role: 'system', content: buildSystemPrompt(story) }, ...history],
+      maxTokens: hasLongPrompt ? 1200 : 800,
+      temperature: 0.4,
     })
   } catch (err) {
     console.error('[bizniz/reply]', (err as Error).message)
