@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
-import { CheckCircle2, Link2Off, Loader2, QrCode, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, Link2Off, Loader2, QrCode, RotateCcw, ShieldCheck } from 'lucide-react'
 import {
   clearWhatsApp,
   fetchWhatsAppSession,
+  restartWhatsApp,
   startWhatsApp,
   stopWhatsApp,
   subscribeWhatsAppEvents,
@@ -57,10 +58,7 @@ export function WhatsAppSessionCard({
       if (status === 'ready' || status === 'logged_out' || status === 'stopped') {
         sawQr.current = false
         setLinkingHint(false)
-      } else if (
-        sawQr.current &&
-        (status === 'connecting' || (!qrDataUrl && status !== 'qr'))
-      ) {
+      } else if (sawQr.current && (status === 'connecting' || (!qrDataUrl && status !== 'qr'))) {
         setLinkingHint(true)
       }
       return {
@@ -72,6 +70,13 @@ export function WhatsAppSessionCard({
         lastError: next.lastError !== undefined ? (next.lastError as string | null) : prev?.lastError ?? null,
         qrDataUrl,
         lastQrAt: next.lastQrAt !== undefined ? (next.lastQrAt as string | null) : prev?.lastQrAt ?? null,
+        hasCreds: next.hasCreds !== undefined ? next.hasCreds : prev?.hasCreds,
+        canRestart: next.canRestart !== undefined ? next.canRestart : prev?.canRestart,
+        sessionsDurable:
+          next.sessionsDurable !== undefined ? next.sessionsDurable : prev?.sessionsDurable,
+        sessionsDir: next.sessionsDir !== undefined ? next.sessionsDir : prev?.sessionsDir,
+        linked: next.linked !== undefined ? next.linked : prev?.linked,
+        live: next.live !== undefined ? next.live : prev?.live,
       }
     })
   }, [])
@@ -106,6 +111,8 @@ export function WhatsAppSessionCard({
           phoneE164: (ev.phoneE164 as string) || null,
           displayName: (ev.displayName as string) || null,
           qrDataUrl: null,
+          hasCreds: true,
+          canRestart: true,
         })
         return
       }
@@ -124,11 +131,18 @@ export function WhatsAppSessionCard({
     }
   }, [isSignedIn, tokenFn, applySession])
 
-  async function run(action: 'start' | 'stop' | 'clear') {
+  async function run(action: 'start' | 'stop' | 'clear' | 'restart') {
     setBusy(action)
     setError('')
     try {
-      const fn = action === 'start' ? startWhatsApp : action === 'stop' ? stopWhatsApp : clearWhatsApp
+      const fn =
+        action === 'start'
+          ? startWhatsApp
+          : action === 'stop'
+            ? stopWhatsApp
+            : action === 'clear'
+              ? clearWhatsApp
+              : restartWhatsApp
       const next = await fn(tokenFn)
       if (action === 'clear') {
         sawQr.current = false
@@ -144,16 +158,19 @@ export function WhatsAppSessionCard({
 
   const status = session?.status || 'stopped'
   const linked = status === 'ready'
+  const hasCreds = Boolean(session?.hasCreds || session?.canRestart || session?.linked)
   const loading =
     busy === 'start' ||
+    busy === 'restart' ||
     status === 'connecting' ||
     status === 'reconnecting' ||
     linkingHint ||
     (status === 'qr' && !session?.qrDataUrl)
   const waitingScan = status === 'qr' && Boolean(session?.qrDataUrl)
-  const hasAccount = Boolean(session?.phoneE164) || status === 'reconnecting' || linked
+  const hasAccount = Boolean(session?.phoneE164) || status === 'reconnecting' || linked || hasCreds
   const shell = professional || compact
   const badgeWait = loading || waitingScan
+  const durable = session?.sessionsDurable !== false
 
   return (
     <article className={cn(!shell && 'bz-card bz-glass', shell && 'bz-wa-pro')}>
@@ -213,7 +230,7 @@ export function WhatsAppSessionCard({
             {loading && !linked ? (
               <span className="inline-flex items-center gap-1.5">
                 <Loader2 size={13} className="animate-spin" />
-                {status === 'reconnecting' ? 'إعادة اتصال…' : 'جاري الربط…'}
+                {status === 'reconnecting' || busy === 'restart' ? 'إعادة تشغيل…' : 'جاري الربط…'}
               </span>
             ) : (
               statusLabel(status)
@@ -222,14 +239,26 @@ export function WhatsAppSessionCard({
         </div>
       </div>
 
+      {session && session.sessionsDurable === false ? (
+        <p className="rounded-xl border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          تحذير: مجلد الجلسة مش على Volume ثابت. بعد كل ديبلوي هتحتاج QR تاني. في Railway اعمل Volume
+          mount على <code className="text-amber-50">/data</code> وVariable{' '}
+          <code className="text-amber-50">WHATSAPP_SESSIONS_DIR=/data/.wa-sessions</code>.
+        </p>
+      ) : null}
+
       {loading && !waitingScan ? (
         <div className="bz-wa-pro__loading" role="status" aria-live="polite">
           <Loader2 size={22} className="animate-spin text-amber-300" />
           <div>
-            <p className="text-sm font-medium text-white">جاري تحميل واتساب…</p>
+            <p className="text-sm font-medium text-white">
+              {busy === 'restart' || status === 'reconnecting'
+                ? 'جاري إعادة تشغيل الجلسة المحفوظة…'
+                : 'جاري تحميل واتساب…'}
+            </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              {status === 'reconnecting'
-                ? 'بنرجع نربط الجلسة المحفوظة من غير QR جديد.'
+              {hasCreds
+                ? 'بنستخدم ملفات الجلسة المحفوظة — من غير QR جديد.'
                 : 'بعد المسح بنكمّل الربط — استنى ثواني لحد ما تظهر «مرتبط».'}
             </p>
           </div>
@@ -247,7 +276,8 @@ export function WhatsAppSessionCard({
               <QrCode size={16} /> امسح من الموبايل
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز. بعد المسح هتشوف شارة تحميل لحد ما يتم الربط.
+              واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز. بعد أول مسح ناجح، زر «إعادة التشغيل»
+              بيرجع الجلسة من غير QR (طالما الـ Volume محفوظ).
             </p>
           </div>
         </div>
@@ -255,13 +285,17 @@ export function WhatsAppSessionCard({
 
       {linked ? (
         <p className="bz-wa-pro__ok">
-          <ShieldCheck size={14} /> الرقم مربوط بحسابك. لو الاتصال قطع، النظام يعيد الربط تلقائي من غير QR
-          جديد (طالما ممسحتش الجلسة).
+          <ShieldCheck size={14} /> الرقم مربوط. لو الديلوي قطع الاتصال، اضغط «إعادة التشغيل» — هترجع من
+          الجلسة المحفوظة{durable ? '' : ' (بعد ما تثبّت Volume)'}.
         </p>
       ) : loading ? (
         <p className="bz-wa-pro__hint inline-flex items-center gap-1.5">
           <Loader2 size={13} className="animate-spin" />
           التحميل شغّال — متقفلش الصفحة لحد ما الحالة تبقى مرتبط.
+        </p>
+      ) : hasCreds ? (
+        <p className="bz-wa-pro__hint">
+          في جلسة محفوظة على السيرفر. اضغط «إعادة التشغيل» عشان تشتغل من غير QR جديد.
         </p>
       ) : (
         <p className="bz-wa-pro__hint">
@@ -279,11 +313,27 @@ export function WhatsAppSessionCard({
         <button
           type="button"
           className="bz-btn bz-btn--primary bz-btn--glow"
-          disabled={!!busy || status === 'ready' || status === 'connecting' || status === 'reconnecting' || linkingHint}
+          disabled={
+            !!busy || status === 'ready' || status === 'connecting' || status === 'reconnecting' || linkingHint
+          }
           onClick={() => void run('start')}
         >
-          {busy === 'start' || loading ? <Loader2 size={14} className="animate-spin" /> : null}
-          {busy === 'start' || loading ? 'جاري التشغيل…' : 'تشغيل'}
+          {busy === 'start' ? <Loader2 size={14} className="animate-spin" /> : null}
+          {busy === 'start' ? 'جاري التشغيل…' : hasCreds ? 'تشغيل الجلسة' : 'تشغيل'}
+        </button>
+        <button
+          type="button"
+          className="bz-btn bz-btn--ghost"
+          disabled={!!busy || !hasCreds || status === 'connecting' || status === 'reconnecting' || linkingHint}
+          onClick={() => void run('restart')}
+          title="إعادة تشغيل من الجلسة المحفوظة بدون QR"
+        >
+          {busy === 'restart' ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <RotateCcw size={14} />
+          )}
+          {busy === 'restart' ? 'جاري إعادة التشغيل…' : 'إعادة التشغيل'}
         </button>
         <button
           type="button"

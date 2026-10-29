@@ -19,6 +19,10 @@ export type WhatsAppSession = {
   qrDataUrl?: string | null
   linked?: boolean
   live?: boolean
+  hasCreds?: boolean
+  canRestart?: boolean
+  sessionsDurable?: boolean
+  sessionsDir?: string
 }
 
 export type BusinessStory = {
@@ -101,6 +105,16 @@ export async function stopWhatsApp(getToken: TokenFn) {
 export async function clearWhatsApp(getToken: TokenFn) {
   const data = await apiFetch<{ success: boolean; session: WhatsAppSession }>(
     '/api/bizniz/whatsapp/clear',
+    getToken,
+    { method: 'POST' },
+  )
+  return data.session
+}
+
+/** Soft restart from saved creds — no new QR. */
+export async function restartWhatsApp(getToken: TokenFn) {
+  const data = await apiFetch<{ success: boolean; session: WhatsAppSession }>(
+    '/api/bizniz/whatsapp/restart',
     getToken,
     { method: 'POST' },
   )

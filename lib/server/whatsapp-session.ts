@@ -29,9 +29,43 @@ type Runtime = {
 /** In-memory runtimes keyed by Clerk userId — one live WhatsApp session per user. */
 const runtimes = new Map<string, Runtime>()
 let restoreStarted = false
+let resolvedSessionsRoot: string | null = null
 
+/**
+ * Persist Baileys creds on a durable disk.
+ * On Railway: mount a volume at `/data` (or set WHATSAPP_SESSIONS_DIR).
+ * Ephemeral `./.wa-sessions` is wiped on every deploy → forces QR again.
+ */
 function sessionsRoot() {
-  return path.resolve(process.env.WHATSAPP_SESSIONS_DIR || './.wa-sessions')
+  if (resolvedSessionsRoot) return resolvedSessionsRoot
+
+  const candidates: string[] = []
+  if (process.env.WHATSAPP_SESSIONS_DIR?.trim()) {
+    candidates.push(path.resolve(process.env.WHATSAPP_SESSIONS_DIR.trim()))
+  }
+  if (process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim()) {
+    candidates.push(path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH.trim(), '.wa-sessions'))
+  }
+  candidates.push('/data/.wa-sessions', path.resolve('./.wa-sessions'))
+
+  for (const dir of candidates) {
+    try {
+      fs.mkdirSync(dir, { recursive: true })
+      const probe = path.join(dir, `.write-ok-${process.pid}`)
+      fs.writeFileSync(probe, 'ok')
+      fs.unlinkSync(probe)
+      resolvedSessionsRoot = dir
+      console.log('[whatsapp] sessions dir:', dir)
+      return dir
+    } catch (err) {
+      console.warn('[whatsapp] sessions dir not usable:', dir, (err as Error).message)
+    }
+  }
+
+  resolvedSessionsRoot = path.resolve('./.wa-sessions')
+  fs.mkdirSync(resolvedSessionsRoot, { recursive: true })
+  console.warn('[whatsapp] falling back to ephemeral sessions dir:', resolvedSessionsRoot)
+  return resolvedSessionsRoot
 }
 
 function authPathFor(userId: string) {
@@ -40,6 +74,15 @@ function authPathFor(userId: string) {
 
 function hasSavedCreds(userId: string) {
   return fs.existsSync(path.join(authPathFor(userId), 'creds.json'))
+}
+
+function isDurableSessionsDir(dir: string) {
+  const normalized = path.resolve(dir).replace(/\\/g, '/')
+  return (
+    normalized.startsWith('/data') ||
+    Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim()) ||
+    Boolean(process.env.WHATSAPP_SESSIONS_DIR?.trim())
+  )
 }
 
 function getRuntime(userId: string) {
@@ -175,6 +218,8 @@ export async function getSession(userId: string) {
     status = 'reconnecting'
   }
 
+  const creds = hasSavedCreds(userId)
+  const root = sessionsRoot()
   return {
     userId,
     status,
@@ -183,8 +228,12 @@ export async function getSession(userId: string) {
     lastError: row?.lastError || null,
     lastQrAt: row?.lastQrAt?.toISOString() || null,
     qrDataUrl: rt.qrDataUrl,
-    linked: Boolean(row?.phoneE164) || hasSavedCreds(userId),
+    linked: Boolean(row?.phoneE164) || creds,
     live,
+    hasCreds: creds,
+    canRestart: creds,
+    sessionsDurable: isDurableSessionsDir(root),
+    sessionsDir: root,
   }
 }
 
@@ -396,6 +445,44 @@ export async function stopSession(userId: string, organizationId: string) {
   return getSession(userId)
 }
 
+/**
+ * Soft restart: keep auth files, drop the live socket, reconnect without QR.
+ * Use after deploys / freezes when creds still exist on disk.
+ */
+export async function restartSession(userId: string, organizationId: string) {
+  if (!hasSavedCreds(userId)) {
+    throw Object.assign(
+      new Error('مفيش جلسة محفوظة — اعمل تشغيل وامسح QR مرة واحدة، وبعدين ثبّت Volume على /data عشان متضيعش بعد الديلوي.'),
+      { status: 400 },
+    )
+  }
+
+  const rt = getRuntime(userId)
+  clearReconnectTimer(rt)
+  // Prevent close-handler from racing while we intentionally restart
+  rt.shouldReconnect = false
+  if (rt.sock) {
+    try {
+      rt.sock.end(undefined)
+    } catch {
+      /* ignore */
+    }
+    rt.sock = null
+  }
+  rt.starting = false
+  rt.qrDataUrl = null
+  rt.reconnectAttempt = 0
+  rt.shouldReconnect = true
+
+  await persist(userId, organizationId, {
+    status: 'reconnecting',
+    lastError: null,
+  })
+  emit(userId, 'status', { status: 'reconnecting', reason: 'manual_restart' })
+
+  return startSession(userId, organizationId)
+}
+
 export async function clearSession(userId: string, organizationId: string) {
   const rt = getRuntime(userId)
   rt.shouldReconnect = false
@@ -435,14 +522,38 @@ export async function ensureSessionsRestored() {
   restoreStarted = true
   try {
     if (!process.env.DATABASE_URL?.trim()) return
+    // Touch sessions root early so logs show durable vs ephemeral path
+    const root = sessionsRoot()
+    console.log(
+      '[whatsapp] restore boot — dir=',
+      root,
+      'durable=',
+      isDurableSessionsDir(root),
+    )
+
     const rows = await prisma.whatsAppSession.findMany({
       where: {
-        status: { in: ['ready', 'connecting', 'reconnecting', 'qr'] },
+        OR: [
+          { status: { in: ['ready', 'connecting', 'reconnecting', 'qr', 'stopped'] } },
+          { phoneE164: { not: null } },
+        ],
       },
-      take: 50,
+      take: 80,
     })
     for (const row of rows) {
-      if (!hasSavedCreds(row.userId)) continue
+      if (!hasSavedCreds(row.userId)) {
+        if (row.phoneE164 || row.status === 'ready') {
+          console.warn(
+            '[whatsapp] DB says linked but creds missing for',
+            row.userId,
+            '— need QR once, then mount volume at /data',
+          )
+        }
+        continue
+      }
+      // Don't auto-wake sessions the owner explicitly stopped
+      if (row.status === 'stopped' || row.status === 'logged_out') continue
+
       const rt = getRuntime(row.userId)
       if (rt.sock || rt.starting) continue
       rt.shouldReconnect = true
